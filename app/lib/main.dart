@@ -13,6 +13,9 @@ import 'features/auth/presentation/screens/register_screen.dart';
 import 'features/auth/presentation/screens/role_placeholder_screen.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
 import 'features/citizen/presentation/screens/citizen_main_navigation.dart';
+import 'features/reports/data/repositories/firebase_reports_repository.dart';
+import 'features/reports/domain/repositories/reports_repository.dart';
+import 'features/reports/presentation/screens/report_flow_screen.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -45,6 +48,11 @@ class LaporInApp extends StatelessWidget {
         ChangeNotifierProvider<AuthProvider>(
           create: (context) => AuthProvider(context.read<AuthRepository>()),
         ),
+        // Repository laporan disuntik di sini agar alur Buat Laporan bisa
+        // membaca implementasi Firebase tanpa meng-import SDK di UI (NFR-6).
+        Provider<ReportsRepository>(
+          create: (_) => FirebaseReportsRepository(),
+        ),
       ],
       child: MaterialApp(
         title: 'LaporIn',
@@ -64,6 +72,7 @@ class LaporInApp extends StatelessWidget {
               const RolePlaceholderScreen(title: 'Beranda Petugas'),
           AppRoutes.adminHome: (_) =>
               const RolePlaceholderScreen(title: 'Beranda Admin'),
+          AppRoutes.createReport: (_) => const ReportFlowScreen(),
         },
       ),
     );

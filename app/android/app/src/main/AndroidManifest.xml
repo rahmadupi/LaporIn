@@ -2,10 +2,23 @@
     <!-- Firebase Auth/Firestore butuh akses internet pada build release.
          Manifest debug/profile sudah punya ini; main manifest belum. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Lokasi: dipakai geolocator di Step 3 (Pin Lokasi). FINE = GPS presisi,
+         COARSE = fallback berbasis jaringan. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Kamera: dipakai image_picker di Step 2 (Ambil Foto). -->
+    <uses-permission android:name="android.permission.CAMERA"/>
     <application
         android:label="main"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- TODO(maps): Ganti YOUR_MAPS_API_KEY_HERE dengan Google Maps API key
+             Anda agar peta di Step 3 menampilkan tile. Tanpa key valid, peta
+             tampil kosong tetapi aplikasi TIDAK crash — koordinat & alamat dari
+             GPS/geocoding tetap berfungsi sehingga laporan tetap bisa dikirim. -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="YOUR_MAPS_API_KEY_HERE"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
