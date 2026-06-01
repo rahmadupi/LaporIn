@@ -16,6 +16,7 @@ import 'features/citizen/presentation/screens/citizen_main_navigation.dart';
 import 'features/reports/data/repositories/firebase_reports_repository.dart';
 import 'features/reports/domain/repositories/reports_repository.dart';
 import 'features/reports/presentation/screens/report_flow_screen.dart';
+import 'features/reports/presentation/screens/report_history_screen.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -73,6 +74,7 @@ class LaporInApp extends StatelessWidget {
           AppRoutes.adminHome: (_) =>
               const RolePlaceholderScreen(title: 'Beranda Admin'),
           AppRoutes.createReport: (_) => const ReportFlowScreen(),
+          AppRoutes.citizenReports: (_) => const ReportHistoryScreen(),
         },
       ),
     );

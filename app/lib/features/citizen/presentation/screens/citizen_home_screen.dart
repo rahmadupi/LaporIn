@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../models/nearby_report.dart';
@@ -44,6 +45,9 @@ class CitizenHomeScreen extends StatelessWidget {
             HomeHeader(
               greetingName: firstName,
               location: 'Sidoarjo, Jawa Timur',
+              // Buka Riwayat Laporan (C7) lewat named route.
+              onHistoryTap: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.citizenReports),
             ),
             const SizedBox(height: 16),
             // Hero card meneruskan aksi ke FAB Lapor milik Main Navigation.

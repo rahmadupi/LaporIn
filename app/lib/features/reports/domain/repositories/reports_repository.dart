@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../entities/report.dart';
 import '../entities/report_category.dart';
 import '../entities/report_severity.dart';
 
@@ -30,4 +31,26 @@ abstract class ReportsRepository {
     required String description,
     required ReportSeverity severity,
   });
+
+  /// Stream real-time daftar laporan milik [reporterId] yang belum dihapus
+  /// (FR-2.3). Setiap perubahan dokumen di Firestore (mis. status diubah Admin)
+  /// otomatis memancarkan list terbaru.
+  Stream<List<Report>> watchUserReports(String reporterId);
+
+  /// Stream real-time satu laporan berdasarkan [reportId] untuk halaman Detail
+  /// (timeline ikut hidup saat status berubah). Memancarkan null bila dokumen
+  /// tidak ada / sudah dihapus.
+  Stream<Report?> watchReport(String reportId);
+
+  /// Mengubah deskripsi laporan (FR-2.4). Hanya boleh saat status `pending`;
+  /// aturan ini divalidasi ulang di sisi server (transaction) agar tidak bisa
+  /// ditembus walau UI lolos. Melempar [ReportFailure] bila status bukan pending.
+  Future<void> updateDescription({
+    required String reportId,
+    required String description,
+  });
+
+  /// Soft delete (FR-2.5): set `isDeleted = true`, BUKAN delete() bawaan, agar
+  /// data tetap ada untuk audit. Hanya boleh saat status `pending`.
+  Future<void> softDelete(String reportId);
 }

@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../core/utils/geohash.dart';
+import '../../domain/entities/report.dart';
 import '../../domain/entities/report_category.dart';
 import '../../domain/entities/report_severity.dart';
+import '../../domain/entities/report_status.dart';
 
 /// Pembuat payload Firestore untuk koleksi `reports`.
 ///
@@ -11,6 +13,38 @@ import '../../domain/entities/report_severity.dart';
 /// di satu tempat agar mudah diaudit.
 class ReportModel {
   ReportModel._();
+
+  /// Mem-parsing satu dokumen Firestore menjadi entitas domain [Report].
+  ///
+  /// Konversi tipe Firebase -> Dart dilakukan di sini: GeoPoint -> double
+  /// lat/lng, Timestamp -> DateTime. Pakai akses defensif (null-aware + default)
+  /// agar dokumen lama/tak lengkap tidak membuat parsing crash.
+  static Report fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? const {};
+    final geo = data['location'] as GeoPoint?;
+    final photos = (data['photoUrls'] as List?)?.cast<String>() ?? const [];
+
+    return Report(
+      // Pakai field reportId bila ada, jika tidak pakai id dokumen.
+      reportId: (data['reportId'] as String?) ?? doc.id,
+      reporterId: (data['reporterId'] as String?) ?? '',
+      isAnonymous: (data['isAnonymous'] as bool?) ?? false,
+      category: ReportCategory.fromSlug(data['category'] as String?),
+      description: (data['description'] as String?) ?? '',
+      severity: ReportSeverity.fromSlug(data['severity'] as String?),
+      photoUrls: photos,
+      latitude: geo?.latitude ?? 0,
+      longitude: geo?.longitude ?? 0,
+      address: (data['address'] as String?) ?? '',
+      status: ReportStatus.fromSlug(data['status'] as String?),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      resolvedAt: (data['resolvedAt'] as Timestamp?)?.toDate(),
+      // Denormalisasi opsional dari flow penyelesaian (lihat entitas Report).
+      beforePhotoUrl: data['beforePhotoUrl'] as String?,
+      afterPhotoUrl: data['afterPhotoUrl'] as String?,
+    );
+  }
 
   /// Menyusun map sesuai skema `reports/{reportId}`.
   ///

@@ -23,6 +23,21 @@ class ReportFailure implements Exception {
         'Terjadi kesalahan saat mengirim laporan. Silakan coba lagi.',
       );
 
+  /// Operasi edit/hapus ditolak karena laporan sudah diproses (bukan `pending`).
+  factory ReportFailure.notEditable() => const ReportFailure(
+        'Laporan tidak dapat diubah karena sudah diproses.',
+      );
+
+  /// Laporan tidak ditemukan (mis. sudah dihapus dari sumber).
+  factory ReportFailure.notFound() => const ReportFailure(
+        'Laporan tidak ditemukan.',
+      );
+
+  /// Gagal menyimpan perubahan (edit/hapus) ke Firestore.
+  factory ReportFailure.saveFailed() => const ReportFailure(
+        'Gagal menyimpan perubahan. Periksa koneksi lalu coba lagi.',
+      );
+
   @override
   String toString() => message;
 }
