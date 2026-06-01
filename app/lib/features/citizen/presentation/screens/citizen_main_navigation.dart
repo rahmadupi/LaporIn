@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'citizen_home_screen.dart';
 import 'citizen_profile_screen.dart';
@@ -43,17 +44,12 @@ class _CitizenMainNavigationState extends State<CitizenMainNavigation> {
     setState(() => _currentIndex = index);
   }
 
-  /// Aksi tombol "Lapor". Flow lapor multi-step dibangun di branch Reports,
-  /// jadi di sini cukup beri umpan balik agar entry-point-nya sudah terlihat.
+  /// Aksi tombol "Lapor": buka alur multi-step Buat Laporan.
+  ///
+  /// Dipanggil oleh FAB tengah maupun tombol "Buat Laporan" di hero card
+  /// Beranda — keduanya berbagi satu entry-point pelaporan.
   void _onReportTap() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('Fitur Lapor akan segera tersedia'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    Navigator.of(context).pushNamed(AppRoutes.createReport);
   }
 
   @override

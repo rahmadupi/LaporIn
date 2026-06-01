@@ -4,6 +4,14 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- Wajib ada agar iOS tidak crash saat meminta izin (image_picker &
+	     geolocator). Teks ini muncul di dialog izin sistem. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Aplikasi membutuhkan kamera untuk memotret kerusakan yang dilaporkan.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Aplikasi membutuhkan akses galeri untuk memilih foto kerusakan.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Aplikasi membutuhkan lokasi Anda untuk menandai titik kerusakan pada peta.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

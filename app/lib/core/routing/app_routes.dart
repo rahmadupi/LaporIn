@@ -14,5 +14,8 @@ class AppRoutes {
   static const String citizenHome = '/citizen/home';
   static const String officerHome = '/officer/home';
   static const String adminHome = '/admin/home';
+
+  // Alur multi-step "Buat Laporan" (Citizen), dipicu dari FAB/hero card.
+  static const String createReport = '/citizen/report/create';
 }
 
