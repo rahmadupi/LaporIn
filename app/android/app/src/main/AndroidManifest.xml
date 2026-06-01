@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Firebase Auth/Firestore butuh akses internet pada build release.
+         Manifest debug/profile sudah punya ini; main manifest belum. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="main"
         android:name="${applicationName}"
