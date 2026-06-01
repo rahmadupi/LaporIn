@@ -13,11 +13,21 @@ import 'features/auth/presentation/screens/register_screen.dart';
 import 'features/auth/presentation/screens/role_placeholder_screen.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
 import 'features/citizen/presentation/screens/citizen_main_navigation.dart';
+import 'features/notifications/data/notification_service.dart';
+import 'features/notifications/presentation/screens/notification_screen.dart';
 import 'features/reports/data/repositories/firebase_reports_repository.dart';
 import 'features/reports/domain/repositories/reports_repository.dart';
 import 'features/reports/presentation/screens/report_flow_screen.dart';
 import 'features/reports/presentation/screens/report_history_screen.dart';
 import 'firebase_options.dart';
+
+/// Key global Navigator & ScaffoldMessenger.
+///
+/// Dipakai [NotificationService] agar bisa melakukan navigasi (deep link) dan
+/// menampilkan banner dari luar widget tree saat dipicu event FCM.
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 Future<void> main() async {
   // Wajib dipanggil sebelum memakai plugin async (Firebase) di main().
@@ -28,6 +38,13 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Siapkan push notification (FCM) setelah Firebase aktif: minta izin,
+  // pasang handler foreground/background/terminated, dan tangani deep link.
+  await NotificationService(
+    navigatorKey: navigatorKey,
+    messengerKey: scaffoldMessengerKey,
+  ).init();
 
   runApp(const LaporInApp());
 }
@@ -59,6 +76,9 @@ class LaporInApp extends StatelessWidget {
         title: 'LaporIn',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        // Key global agar NotificationService bisa navigasi & tampilkan banner.
+        navigatorKey: navigatorKey,
+        scaffoldMessengerKey: scaffoldMessengerKey,
         initialRoute: AppRoutes.splash,
         // Tabel route terpusat; named routes memudahkan navigasi antar fitur.
         routes: {
@@ -75,6 +95,7 @@ class LaporInApp extends StatelessWidget {
               const RolePlaceholderScreen(title: 'Beranda Admin'),
           AppRoutes.createReport: (_) => const ReportFlowScreen(),
           AppRoutes.citizenReports: (_) => const ReportHistoryScreen(),
+          AppRoutes.citizenNotifications: (_) => const NotificationScreen(),
         },
       ),
     );

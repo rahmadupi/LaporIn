@@ -167,6 +167,29 @@ class FirebaseReportsRepository implements ReportsRepository {
     }
   }
 
+  @override
+  Future<void> submitRating({
+    required String reportId,
+    required String reporterId,
+    required int stars,
+    required String comment,
+  }) async {
+    try {
+      // Rating disimpan sebagai dokumen baru di koleksi `ratings` (Flow 5).
+      // Agregasi ke profil officer dilakukan terpisah (Cloud Function / Anggota
+      // lain), jadi di sini cukup menulis data mentahnya.
+      await _firestore.collection('ratings').add({
+        'reportId': reportId,
+        'reporterId': reporterId,
+        'stars': stars,
+        'comment': comment,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      throw ReportFailure.saveFailed();
+    }
+  }
+
   /// Membuat nomor tiket format `LPR-YYYY-NNNNNNN` (skema 8.2).
   ///
   /// 7 digit acak cukup untuk demo; di produksi sebaiknya pakai counter server

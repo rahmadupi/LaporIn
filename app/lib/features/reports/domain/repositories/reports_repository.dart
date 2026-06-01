@@ -53,4 +53,13 @@ abstract class ReportsRepository {
   /// Soft delete (FR-2.5): set `isDeleted = true`, BUKAN delete() bawaan, agar
   /// data tetap ada untuk audit. Hanya boleh saat status `pending`.
   Future<void> softDelete(String reportId);
+
+  /// Menyimpan rating warga atas laporan yang sudah selesai (Flow 5).
+  /// Menulis dokumen ke koleksi `ratings`. Melempar [ReportFailure] bila gagal.
+  Future<void> submitRating({
+    required String reportId,
+    required String reporterId,
+    required int stars,
+    required String comment,
+  });
 }
