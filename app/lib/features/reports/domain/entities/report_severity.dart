@@ -17,4 +17,13 @@ enum ReportSeverity {
   final String slug;
   final String label;
   final Color color;
+
+  /// Memetakan nilai Firestore (`severity`) kembali ke enum; nilai tak dikenal
+  /// jatuh ke [medium] sebagai default aman.
+  static ReportSeverity fromSlug(String? value) {
+    return values.firstWhere(
+      (s) => s.slug == value,
+      orElse: () => ReportSeverity.medium,
+    );
+  }
 }

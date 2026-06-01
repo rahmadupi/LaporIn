@@ -11,11 +11,16 @@ class HomeHeader extends StatelessWidget {
     super.key,
     required this.greetingName,
     required this.location,
+    required this.onHistoryTap,
   });
 
   /// Nama yang disapa (mis. nama depan user); diisi dari AuthProvider.
   final String greetingName;
   final String location;
+
+  /// Buka Riwayat Laporan (C7). Dilewatkan dari screen agar header tetap
+  /// presentational dan tidak tahu detail navigasi.
+  final VoidCallback onHistoryTap;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +56,13 @@ class HomeHeader extends StatelessWidget {
               ),
             ],
           ),
+        ),
+        // Akses cepat ke Riwayat Laporan milik user (C7).
+        IconButton(
+          onPressed: onHistoryTap,
+          icon: const Icon(Icons.receipt_long_outlined, size: 24),
+          color: AppColors.textPrimary,
+          tooltip: 'Riwayat Laporan',
         ),
         // Tombol notifikasi (placeholder; notification center dibangun terpisah).
         IconButton(

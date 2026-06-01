@@ -23,4 +23,13 @@ enum ReportCategory {
   final String slug;
   final String label;
   final IconData icon;
+
+  /// Kebalikan dari [slug]: memetakan nilai Firestore kembali ke enum saat
+  /// membaca dokumen. Slug tak dikenal jatuh ke [other] agar UI tidak crash.
+  static ReportCategory fromSlug(String? value) {
+    return values.firstWhere(
+      (c) => c.slug == value,
+      orElse: () => ReportCategory.other,
+    );
+  }
 }
