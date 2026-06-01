@@ -25,4 +25,12 @@ class AppColors {
 
   static const Color error = Color(0xFFD92D20);
   static const Color success = Color(0xFF12B76A);
+
+  /// Oranye aksen — tombol "Buat Laporan", FAB "Lapor", badge Watch Zones.
+  /// Ditambahkan saat fitur beranda/profil agar aksen oranye di mockup punya
+  /// satu sumber warna, bukan tersebar sebagai magic number di tiap widget.
+  static const Color accent = Color(0xFFF59E0B);
+
+  /// Latar lembut untuk ikon bulat di menu profil (biru sangat muda).
+  static const Color primarySoft = Color(0xFFE8EFFB);
 }
