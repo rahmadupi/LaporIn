@@ -12,7 +12,7 @@ import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/register_screen.dart';
 import 'features/auth/presentation/screens/role_placeholder_screen.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
-import 'features/citizen/presentation/screens/citizen_home_screen.dart';
+import 'features/citizen/presentation/screens/citizen_main_navigation.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -57,7 +57,9 @@ class LaporInApp extends StatelessWidget {
           AppRoutes.login: (_) => const LoginScreen(),
           AppRoutes.register: (_) => const RegisterScreen(),
           AppRoutes.forgotPassword: (_) => const ForgotPasswordScreen(),
-          AppRoutes.citizenHome: (_) => const CitizenHomeScreen(),
+          // Citizen masuk ke Main Navigation (bottom nav + tab), bukan langsung
+          // ke Home, agar semua tab citizen berada di bawah satu cangkang.
+          AppRoutes.citizenHome: (_) => const CitizenMainNavigation(),
           AppRoutes.officerHome: (_) =>
               const RolePlaceholderScreen(title: 'Beranda Petugas'),
           AppRoutes.adminHome: (_) =>
