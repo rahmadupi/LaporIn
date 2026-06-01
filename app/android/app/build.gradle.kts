@@ -1,6 +1,8 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
+    // Mengaktifkan Google Services untuk Firebase (membaca google-services.json).
+    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -24,6 +26,8 @@ android {
         applicationId = "com.example.main"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // Firebase Auth SDK terbaru mensyaratkan minSdk 23 (NFR-4 menyebut 21,
+        // tetapi dependency Firebase menaikkan batas minimum ini).
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
