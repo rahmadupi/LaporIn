@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <!-- Kamera: dipakai image_picker di Step 2 (Ambil Foto). -->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- Notifikasi: wajib di Android 13+ (API 33) agar push FCM bisa tampil. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="main"
         android:name="${applicationName}"

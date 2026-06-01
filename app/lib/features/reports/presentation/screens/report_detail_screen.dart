@@ -4,11 +4,14 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/utils/snackbar_helper.dart';
+import '../../../../core/widgets/primary_button.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/report.dart';
 import '../../domain/report_failure.dart';
 import '../../domain/repositories/reports_repository.dart';
 import '../widgets/before_after_view.dart';
 import '../widgets/edit_description_sheet.dart';
+import '../widgets/rating_bottom_sheet.dart';
 import '../widgets/report_detail_action_bar.dart';
 import '../widgets/report_hero_photo.dart';
 import '../widgets/report_mini_map.dart';
@@ -133,6 +136,13 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                           beforeUrl: report.beforePhotoUrl,
                           afterUrl: report.afterPhotoUrl,
                         ),
+                        const SizedBox(height: 16),
+                        // CTA "Beri Rating" (Flow 5) — hanya untuk laporan
+                        // yang sudah selesai.
+                        PrimaryButton(
+                          label: 'Beri Rating',
+                          onPressed: () => _onRate(report),
+                        ),
                       ],
                     ],
                   ),
@@ -195,6 +205,19 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         ),
       ],
     );
+  }
+
+  /// Beri rating (Flow 5): buka RatingBottomSheet. reporterId diambil dari user
+  /// yang login agar rating terhubung ke pelapor.
+  Future<void> _onRate(Report report) async {
+    final uid = context.read<AuthProvider>().user?.uid ?? '';
+    final submitted = await showRatingBottomSheet(
+      context,
+      reportId: report.reportId,
+      reporterId: uid,
+    );
+    if (!mounted || !submitted) return;
+    SnackbarHelper.showSuccess(context, 'Terima kasih atas penilaian Anda!');
   }
 
   /// Edit deskripsi: buka sheet, lalu kirim ke repository (validasi pending di

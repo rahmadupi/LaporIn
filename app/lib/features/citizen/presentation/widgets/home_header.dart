@@ -12,6 +12,7 @@ class HomeHeader extends StatelessWidget {
     required this.greetingName,
     required this.location,
     required this.onHistoryTap,
+    required this.onNotificationTap,
   });
 
   /// Nama yang disapa (mis. nama depan user); diisi dari AuthProvider.
@@ -21,6 +22,9 @@ class HomeHeader extends StatelessWidget {
   /// Buka Riwayat Laporan (C7). Dilewatkan dari screen agar header tetap
   /// presentational dan tidak tahu detail navigasi.
   final VoidCallback onHistoryTap;
+
+  /// Buka Notification Center, dipicu ikon lonceng.
+  final VoidCallback onNotificationTap;
 
   @override
   Widget build(BuildContext context) {
@@ -64,11 +68,12 @@ class HomeHeader extends StatelessWidget {
           color: AppColors.textPrimary,
           tooltip: 'Riwayat Laporan',
         ),
-        // Tombol notifikasi (placeholder; notification center dibangun terpisah).
+        // Ikon lonceng -> Notification Center.
         IconButton(
-          onPressed: () {},
+          onPressed: onNotificationTap,
           icon: const Icon(Icons.notifications_none, size: 26),
           color: AppColors.textPrimary,
+          tooltip: 'Notifikasi',
         ),
       ],
     );

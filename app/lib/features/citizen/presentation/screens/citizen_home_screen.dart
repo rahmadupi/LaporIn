@@ -48,6 +48,9 @@ class CitizenHomeScreen extends StatelessWidget {
               // Buka Riwayat Laporan (C7) lewat named route.
               onHistoryTap: () =>
                   Navigator.of(context).pushNamed(AppRoutes.citizenReports),
+              // Buka Notification Center lewat named route.
+              onNotificationTap: () => Navigator.of(context)
+                  .pushNamed(AppRoutes.citizenNotifications),
             ),
             const SizedBox(height: 16),
             // Hero card meneruskan aksi ke FAB Lapor milik Main Navigation.

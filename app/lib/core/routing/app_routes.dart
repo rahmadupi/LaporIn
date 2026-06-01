@@ -21,5 +21,8 @@ class AppRoutes {
   // Riwayat Laporan (C7). Detail (C8) dibuka via MaterialPageRoute karena
   // memerlukan argumen reportId.
   static const String citizenReports = '/citizen/reports';
+
+  // Notification Center (Citizen), diakses dari ikon lonceng Beranda.
+  static const String citizenNotifications = '/citizen/notifications';
 }
 
