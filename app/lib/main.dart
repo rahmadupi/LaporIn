@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'features/officer/screens/officer_proof_screen.dart';
+import 'features/officer/screens/officer_home_screen.dart'; // Import diubah ke Home
 
 void main() {
   runApp(const MyApp());
@@ -16,8 +16,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      // Set home langsung mengarah ke layar kerjamu
-      home: const OfficerProofScreen(), 
+      // Set home kembali mengarah ke Beranda
+      home: const OfficerHomeScreen(), 
       debugShowCheckedModeBanner: false,
     );
   }

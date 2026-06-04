@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'officer_proof_screen.dart'; // Tambahan import untuk navigasi
 
 class OfficerHomeScreen extends StatefulWidget {
   const OfficerHomeScreen({Key? key}) : super(key: key);
@@ -172,12 +173,13 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: 3, // Dummy count
       itemBuilder: (context, index) {
-        return _buildTaskCardDummy();
+        return _buildTaskCardDummy(context); // Lempar context ke widget card
       },
     );
   }
 
-  Widget _buildTaskCardDummy() {
+  // Tambahkan context sebagai parameter agar Navigator bisa dipakai
+  Widget _buildTaskCardDummy(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -237,7 +239,13 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
               const Text("Belum Dimulai", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
               TextButton(
                 onPressed: () {
-                   // Aksi untuk membuka detail tugas
+                   // AKSI NAVIGASI DITAMBAHKAN DI SINI
+                   Navigator.push(
+                     context,
+                     MaterialPageRoute(
+                       builder: (context) => const OfficerProofScreen(),
+                     ),
+                   );
                 },
                 child: const Text("Detail →", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               )

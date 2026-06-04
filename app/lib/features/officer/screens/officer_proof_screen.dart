@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class OfficerProofScreen extends StatefulWidget {
   const OfficerProofScreen({Key? key}) : super(key: key);
@@ -8,9 +10,37 @@ class OfficerProofScreen extends StatefulWidget {
 }
 
 class _OfficerProofScreenState extends State<OfficerProofScreen> {
-  // Dummy state
+  // Dummy state untuk UI
   final bool _isOffline = false;
   final bool _isGpsMatch = true;
+
+  // === VARIABEL UNTUK KAMERA ===
+  File? _beforePhoto;
+  File? _afterPhoto;
+  final ImagePicker _picker = ImagePicker();
+
+  // === FUNGSI MEMBUKA KAMERA ===
+  Future<void> _takePhoto(bool isBefore) async {
+    try {
+      // Membuka kamera HP
+      final XFile? photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 50, // Kompres ukuran gambar agar tidak terlalu berat
+      );
+
+      if (photo != null) {
+        setState(() {
+          if (isBefore) {
+            _beforePhoto = File(photo.path);
+          } else {
+            _afterPhoto = File(photo.path);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Gagal membuka kamera: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +72,9 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
       elevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.black),
-        onPressed: () {},
+        onPressed: () {
+          Navigator.pop(context); // Fungsi kembali ke layar sebelumnya
+        },
       ),
       title: const Text("Bukti Penyelesaian", 
         style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600)),
@@ -91,9 +123,9 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(child: _buildPhotoBox("📷 Foto SEBELUM")),
+            Expanded(child: _buildPhotoBox("📷 Foto SEBELUM", true, _beforePhoto)),
             const SizedBox(width: 16),
-            Expanded(child: _buildPhotoBox("📷 Foto SESUDAH")),
+            Expanded(child: _buildPhotoBox("📷 Foto SESUDAH", false, _afterPhoto)),
           ],
         ),
         const SizedBox(height: 8),
@@ -103,27 +135,36 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
     );
   }
 
-  Widget _buildPhotoBox(String label) {
+  // Parameter diubah untuk menerima status 'isBefore' dan 'file gambar'
+  Widget _buildPhotoBox(String label, bool isBefore, File? photoFile) {
     return Column(
       children: [
         Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
-        // Placeholder untuk kotak foto
-        Container(
-          height: 160,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey, style: BorderStyle.solid),
-            borderRadius: BorderRadius.circular(8),
-            color: Colors.grey[50],
-          ),
-          child: const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.camera_alt, size: 40, color: Colors.grey),
-              SizedBox(height: 8),
-              Text("Ketuk untuk\nambil foto", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
+        GestureDetector(
+          onTap: () => _takePhoto(isBefore), // Memanggil fungsi kamera saat diklik
+          child: Container(
+            height: 160,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey, style: BorderStyle.solid),
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.grey[50],
+            ),
+            // Logika: Jika foto ada, tampilkan fotonya. Jika tidak, tampilkan icon kamera.
+            child: photoFile != null 
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(photoFile, fit: BoxFit.cover),
+                )
+              : const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.camera_alt, size: 40, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text("Ketuk untuk\nambil foto", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
           ),
         ),
       ],
@@ -162,7 +203,7 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             suffixIcon: const Column(
               mainAxisAlignment: MainAxisAlignment.end,
-              children: [Icon(Icons.mic, color: Colors.blue)], // Voice dictation icon
+              children: [Icon(Icons.mic, color: Colors.blue)],
             )
           ),
         ),
@@ -192,7 +233,8 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[700], foregroundColor: Colors.white),
               onPressed: () {},
-              child: Text(_isOffline ? "Simpan & Sync Nanti" : "Kirim Bukti"),
+              // Tombol akan mendeteksi apakah kedua foto sudah terisi atau belum
+              child: Text(_beforePhoto != null && _afterPhoto != null ? "Kirim Bukti" : "Lengkapi Foto"),
             ),
           ),
         ],
