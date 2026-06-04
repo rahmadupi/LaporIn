@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'officer_proof_screen.dart'; // Tambahan import untuk navigasi
+import 'officer_task_detail_screen.dart'; // DIUBAH: Import beralih ke Task Detail
 
 class OfficerHomeScreen extends StatefulWidget {
   const OfficerHomeScreen({Key? key}) : super(key: key);
@@ -9,7 +9,6 @@ class OfficerHomeScreen extends StatefulWidget {
 }
 
 class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
-  // Variabel state untuk filter (chips)
   int _selectedFilterIndex = 0;
   final List<String> _filters = [
     "Semua (5)",
@@ -21,7 +20,7 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100], // neutral-100 bg
+      backgroundColor: Colors.grey[100],
       appBar: _buildOfficerAppBar(),
       body: SingleChildScrollView(
         child: Column(
@@ -34,7 +33,6 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
           ],
         ),
       ),
-      // Dummy Bottom Navigation sesuai prompt
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 0,
         selectedItemColor: Colors.blue[700],
@@ -49,16 +47,15 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     );
   }
 
-  // Komponen 1: Top App Bar
   AppBar _buildOfficerAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
-      toolbarHeight: 72, // taller for officer
+      toolbarHeight: 72,
       elevation: 0,
       title: Row(
         children: [
           const CircleAvatar(
-            radius: 20, // 40px circle
+            radius: 20,
             backgroundColor: Colors.blueAccent,
             child: Icon(Icons.person, color: Colors.white),
           ),
@@ -68,7 +65,7 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
             children: [
               const Text("Pak Yusuf", 
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black)),
-              Text("Mitra Relawan - Sidoarjo", // Sudah disesuaikan dengan narasi C2C
+              Text("Mitra Relawan - Sidoarjo", 
                   style: TextStyle(fontSize: 12, color: Colors.grey[600])),
             ],
           ),
@@ -83,13 +80,12 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     );
   }
 
-  // Komponen 2: Summary Card
   Widget _buildTodaySummaryCard() {
     return Container(
       margin: const EdgeInsets.all(24),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue[700], // primary blue
+        color: Colors.blue[700],
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -124,7 +120,6 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     );
   }
 
-  // Komponen 3: Filter Chips
   Widget _buildFilterChips() {
     return SizedBox(
       height: 40,
@@ -153,7 +148,6 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     );
   }
 
-  // Komponen 4: Sort Dropdown (Sederhana)
   Widget _buildSortDropdown() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
@@ -165,20 +159,18 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     );
   }
 
-  // Komponen 5: Task List (Dummy Card)
   Widget _buildTaskList() {
     return ListView.builder(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(), // Scroll mengikuti layar utama
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: 3, // Dummy count
+      itemCount: 3,
       itemBuilder: (context, index) {
-        return _buildTaskCardDummy(context); // Lempar context ke widget card
+        return _buildTaskCardDummy(context);
       },
     );
   }
 
-  // Tambahkan context sebagai parameter agar Navigator bisa dipakai
   Widget _buildTaskCardDummy(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -192,7 +184,6 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
       ),
       child: Column(
         children: [
-          // Baris Atas: Priority & Deadline
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -205,7 +196,6 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          // Isi Tengah: Foto & Info
           Row(
             children: [
               Container(
@@ -214,7 +204,7 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.image, color: Colors.grey), // Placeholder foto
+                child: const Icon(Icons.image, color: Colors.grey),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -232,18 +222,17 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
             ],
           ),
           const Divider(height: 24),
-          // Baris Bawah: Status & Aksi
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text("Belum Dimulai", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
               TextButton(
                 onPressed: () {
-                   // AKSI NAVIGASI DITAMBAHKAN DI SINI
+                   // DIUBAH: Navigasi sekarang mengarah ke Layar Detail Tugas
                    Navigator.push(
                      context,
                      MaterialPageRoute(
-                       builder: (context) => const OfficerProofScreen(),
+                       builder: (context) => const OfficerTaskDetailScreen(),
                      ),
                    );
                 },
