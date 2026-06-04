@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
+import 'features/officer/screens/officer_home_screen.dart';
 
 void main() {
-  runApp(const MainApp());
+  runApp(const MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
+    return MaterialApp(
+      title: 'LaporIn',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
       ),
+      // Set home langsung mengarah ke layar kerjamu
+      home: const OfficerHomeScreen(), 
+      debugShowCheckedModeBanner: false,
     );
   }
 }
