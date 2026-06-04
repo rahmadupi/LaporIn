@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart'; 
 import 'package:connectivity_plus/connectivity_plus.dart'; 
-import 'package:hive/hive.dart'; // Import Hive untuk akses database lokal
+import 'package:hive/hive.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt; // Import Speech-to-Text
 
 class OfficerProofScreen extends StatefulWidget {
   const OfficerProofScreen({Key? key}) : super(key: key);
@@ -32,20 +33,23 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
   final TextEditingController _notesController = TextEditingController();
   late Box _offlineBox;
 
+  // === VARIABEL VOICE-TO-TEXT ===
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  String _previousText = ""; // Untuk menyimpan teks yang sudah diketik/diucapkan sebelumnya
+
   @override
   void initState() {
     super.initState();
-    _offlineBox = Hive.box('offline_proofs'); // Menghubungkan ke laci Hive yang dibuka di main.dart
+    _offlineBox = Hive.box('offline_proofs'); 
+    _speech = stt.SpeechToText(); // Inisialisasi engine suara
+    
     _checkInitialConnection();
-    _loadSavedDraft(); // Auto-load draft jika sebelumnya pernah menyimpan
+    _loadSavedDraft(); 
     
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
       bool isCurrentlyOffline = results.contains(ConnectivityResult.none);
-      
-      setState(() {
-        _isOffline = isCurrentlyOffline;
-      });
-      
+      setState(() => _isOffline = isCurrentlyOffline);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -58,14 +62,48 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
     });
   }
 
-  Future<void> _checkInitialConnection() async {
-    final List<ConnectivityResult> results = await Connectivity().checkConnectivity();
-    setState(() {
-      _isOffline = results.contains(ConnectivityResult.none);
-    });
+  // === FUNGSI VOICE-TO-TEXT ===
+  void _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (val) {
+          debugPrint('onStatus: $val');
+          if (val == 'done' || val == 'notListening') {
+            setState(() => _isListening = false);
+          }
+        },
+        onError: (val) => debugPrint('onError: $val'),
+      );
+      
+      if (available) {
+        setState(() {
+          _isListening = true;
+          // Simpan teks yang sudah ada agar tidak tertimpa saat mulai bicara baru
+          _previousText = _notesController.text;
+          if (_previousText.isNotEmpty && !_previousText.endsWith(" ")) {
+            _previousText += " "; 
+          }
+        });
+        
+        _speech.listen(
+          onResult: (val) => setState(() {
+            // Gabungkan teks lama dengan hasil ucapan baru
+            _notesController.text = _previousText + val.recognizedWords;
+          }),
+          localeId: 'id_ID', // Paksa menggunakan bahasa Indonesia
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
   }
 
-  // Fungsi untuk memuat kembali data draft yang tersimpan di HP
+  Future<void> _checkInitialConnection() async {
+    final List<ConnectivityResult> results = await Connectivity().checkConnectivity();
+    setState(() => _isOffline = results.contains(ConnectivityResult.none));
+  }
+
   void _loadSavedDraft() {
     String? beforeBoxPath = _offlineBox.get('before_photo');
     String? afterBoxPath = _offlineBox.get('after_photo');
@@ -78,7 +116,6 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
     });
   }
 
-  // Fungsi untuk menyimpan ketikan dan path foto ke Hive
   Future<void> _saveDraftToHive() async {
     try {
       await _offlineBox.put('before_photo', _beforePhoto?.path);
@@ -87,10 +124,7 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("✓ Draft berhasil disimpan di memori lokal"),
-            backgroundColor: Colors.blue,
-          ),
+          const SnackBar(content: Text("✓ Draft berhasil disimpan di memori lokal"), backgroundColor: Colors.blue),
         );
       }
     } catch (e) {
@@ -101,26 +135,20 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
   @override
   void dispose() {
     _connectivitySubscription.cancel();
-    _notesController.dispose(); // Hapus controller untuk mencegah kebocoran memori
+    _notesController.dispose(); 
     super.dispose();
   }
 
-  // === FUNGSI DETEKSI LOKASI ===
   Future<void> _getCurrentLocation() async {
-    setState(() {
-      _isLoadingLocation = true;
-    });
+    setState(() => _isLoadingLocation = true);
 
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       setState(() => _isLoadingLocation = false);
       return;
     }
 
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
@@ -134,9 +162,7 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
       return;
     }
 
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high
-    );
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
 
     setState(() {
       _currentPosition = position;
@@ -145,21 +171,14 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
     });
   }
 
-  // === FUNGSI MEMBUKA KAMERA ===
   Future<void> _takePhoto(bool isBefore) async {
     try {
-      final XFile? photo = await _picker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 50,
-      );
+      final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 50);
 
       if (photo != null) {
         setState(() {
-          if (isBefore) {
-            _beforePhoto = File(photo.path);
-          } else {
-            _afterPhoto = File(photo.path);
-          }
+          if (isBefore) _beforePhoto = File(photo.path);
+          else _afterPhoto = File(photo.path);
         });
         await _getCurrentLocation();
       }
@@ -200,19 +219,14 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
         icon: const Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () => Navigator.pop(context),
       ),
-      title: const Text("Bukti Penyelesaian", 
-        style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600)),
+      title: const Text("Bukti Penyelesaian", style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600)),
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 16.0),
           child: Center(
             child: Text(
               _isOffline ? "🟠 Offline — akan disinkronkan" : "🟢 Online",
-              style: TextStyle(
-                fontSize: 12, 
-                color: _isOffline ? Colors.orange[800] : Colors.green[700],
-                fontWeight: FontWeight.bold
-              ),
+              style: TextStyle(fontSize: 12, color: _isOffline ? Colors.orange[800] : Colors.green[700], fontWeight: FontWeight.bold),
             ),
           ),
         )
@@ -224,10 +238,7 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -253,8 +264,7 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        Text("💡 Pastikan foto jelas dan mencakup area kerusakan", 
-          style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text("💡 Pastikan foto jelas dan mencakup area kerusakan", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       ],
     );
   }
@@ -275,12 +285,9 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
               color: Colors.grey[50],
             ),
             child: photoFile != null 
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.file(photoFile, fit: BoxFit.cover),
-                )
+              ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(photoFile, fit: BoxFit.cover))
               : const Column(
-                  mainAxisAlignment: MainAxisAlignment.center, // Ini bagian yang sudah diperbaiki!
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.camera_alt, size: 40, color: Colors.grey),
                     SizedBox(height: 8),
@@ -316,8 +323,7 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
 
     return Row(
       children: [
-        Icon(_isGpsMatch ? Icons.check_circle : Icons.warning, 
-          color: _isGpsMatch ? Colors.green : Colors.orange, size: 20),
+        Icon(_isGpsMatch ? Icons.check_circle : Icons.warning, color: _isGpsMatch ? Colors.green : Colors.orange, size: 20),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -338,18 +344,39 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
         const Text("Catatan Pekerjaan", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         TextField(
-          controller: _notesController, // DIHUBUNGKAN ke controller
+          controller: _notesController,
           maxLines: 4,
           decoration: InputDecoration(
-            hintText: "Misal: Tambal aspal 2m², material HRS-Base, durasi pengerjaan 90 menit",
+            hintText: "Misal: Tambal aspal 2m², material HRS-Base...",
             hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            suffixIcon: const Column(
+            suffixIcon: Column(
               mainAxisAlignment: MainAxisAlignment.end,
-              children: [Icon(Icons.mic, color: Colors.blue)],
+              children: [
+                // === TOMBOL MIKROFON YANG SUDAH HIDUP ===
+                IconButton(
+                  icon: Icon(
+                    _isListening ? Icons.mic : Icons.mic_none, 
+                    color: _isListening ? Colors.red : Colors.blue
+                  ),
+                  onPressed: _listen, // Panggil fungsi rekam suara saat ditekan
+                ),
+              ],
             )
           ),
         ),
+        // === INDIKATOR VISUAL SAAT MEREKAM ===
+        if (_isListening) 
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Row(
+              children: [
+                const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red)),
+                const SizedBox(width: 8),
+                Text("Sedang mendengarkan...", style: TextStyle(fontSize: 12, color: Colors.red[700], fontStyle: FontStyle.italic)),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -366,7 +393,7 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
           Expanded(
             flex: 4,
             child: OutlinedButton(
-              onPressed: _saveDraftToHive, // DIHUBUNGKAN ke fungsi simpan Hive
+              onPressed: _saveDraftToHive, 
               child: const Text("Simpan Draft"),
             ),
           ),
