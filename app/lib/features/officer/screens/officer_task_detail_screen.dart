@@ -1,17 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'officer_proof_screen.dart';
 
 class OfficerTaskDetailScreen extends StatefulWidget {
-  const OfficerTaskDetailScreen({Key? key}) : super(key: key);
+  final String taskId;
+  final Map<String, dynamic> taskData;
+
+  const OfficerTaskDetailScreen({
+    Key? key, 
+    required this.taskId, 
+    required this.taskData,
+  }) : super(key: key);
 
   @override
   State<OfficerTaskDetailScreen> createState() => _OfficerTaskDetailScreenState();
 }
 
 class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
-  // State untuk mensimulasikan status tugas sesuai Flow 3
-  // "assigned" -> Belum Dimulai, "in_progress" -> Sedang Dikerjakan
-  String _taskStatus = "assigned"; 
+  late String _taskStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ambil status dari database saat halaman pertama dibuka
+    _taskStatus = widget.taskData['status'] ?? "Belum Dimulai";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,9 +59,9 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
     );
   }
 
-  // Banner Status Terkini
   Widget _buildStatusBanner() {
-    bool isInProgress = _taskStatus == "in_progress";
+    // Cek apakah statusnya sedang dikerjakan
+    bool isInProgress = _taskStatus.toLowerCase() == "sedang dikerjakan";
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -64,7 +77,7 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
           ),
           const SizedBox(width: 12),
           Text(
-            isInProgress ? "🔨 Status: Sedang Dikerjakan" : "📌 Status: Belum Dimulai",
+            isInProgress ? "🔨 Status: Sedang Dikerjakan" : "📌 Status: $_taskStatus",
             style: TextStyle(
               fontSize: 14, 
               fontWeight: FontWeight.bold, 
@@ -76,7 +89,6 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
     );
   }
 
-  // Foto Kerusakan dari Warga (Citizen)
   Widget _buildCitizenReportImage() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,37 +102,47 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
             color: Colors.grey[300],
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.broken_image, size: 50, color: Colors.grey), // Simulasi foto jalan rusak
+          child: const Icon(Icons.broken_image, size: 50, color: Colors.grey), 
         ),
       ],
     );
   }
 
-  // Informasi Detail Tugas
   Widget _buildTaskDetails() {
+    // Mengekstrak data asli dari Firebase
+    final title = widget.taskData['title'] ?? 'Tanpa Judul';
+    final urgency = widget.taskData['urgency'] ?? 'Biasa';
+    final location = widget.taskData['location'] ?? 'Lokasi tidak diketahui';
+    final desc = widget.taskData['description'] ?? 'Tidak ada deskripsi laporan.';
+
+    Color urgencyColor = Colors.blue;
+    if (urgency.toString().toLowerCase() == 'mendesak') {
+      urgencyColor = Colors.red;
+    } else if (urgency.toString().toLowerCase() == 'sedang') {
+      urgencyColor = Colors.orange;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("Jalan Berlubang", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: Colors.red[100], borderRadius: BorderRadius.circular(12)),
-              child: const Text("CRITICAL", style: TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold)),
+              decoration: BoxDecoration(color: urgencyColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              child: Text(urgency.toString().toUpperCase(), style: TextStyle(fontSize: 10, color: urgencyColor, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
         const SizedBox(height: 4),
-        const Text("LPR-2026-0001234", style: TextStyle(fontFamily: 'monospace', color: Colors.grey)),
+        Text("ID: ${widget.taskId}", style: const TextStyle(fontFamily: 'monospace', color: Colors.grey, fontSize: 12)),
         const Divider(height: 32),
         
-        _buildInfoRow(Icons.location_on, "Lokasi", "Jl. Diponegoro No. 45, Sidoarjo"),
+        _buildInfoRow(Icons.location_on, "Lokasi", location),
         const SizedBox(height: 16),
-        _buildInfoRow(Icons.access_time_filled, "Tenggat Waktu", "Besok, 17:00 WIB (⏰ 4 jam lagi)"),
-        const SizedBox(height: 16),
-        _buildInfoRow(Icons.description, "Deskripsi Laporan", "Lubang cukup dalam di lajur kiri, membahayakan pengendara motor yang lewat saat malam hari karena minim lampu jalan."),
+        _buildInfoRow(Icons.description, "Deskripsi Laporan", desc),
       ],
     );
   }
@@ -145,7 +167,6 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
     );
   }
 
-  // Tombol Navigasi Peta Eksternal
   Widget _buildNavigationButton() {
     return SizedBox(
       width: double.infinity,
@@ -159,8 +180,6 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         onPressed: () {
-          // Simulasi Handoff ke Google Maps via geo URI sesuai dokumen
-          debugPrint("Launching Geo URI: geo:-7.2936,112.7786?q=Jl.+Diponegoro+No.+45");
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Membuka Google Maps... (Handoff via Geo URI)")),
           );
@@ -169,7 +188,6 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
     );
   }
 
-  // Tombol Aksi Dinamis di Bagian Bawah
   Widget _buildBottomActionBar() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -177,7 +195,7 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
         color: Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
       ),
-      child: _taskStatus == "assigned"
+      child: _taskStatus.toLowerCase() == "belum dimulai"
           ? ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue[700],
@@ -185,10 +203,21 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              onPressed: () {
+              onPressed: () async {
+                // 1. Ubah tampilan di layar langsung (Optimistic UI)
                 setState(() {
-                  _taskStatus = "in_progress"; // Ubah status tugas di UI
+                  _taskStatus = "Sedang Dikerjakan"; 
                 });
+                
+                // 2. Tembak perubahan status ke database Firebase!
+                try {
+                  await FirebaseFirestore.instance
+                      .collection('assignments')
+                      .doc(widget.taskId)
+                      .update({'status': 'Sedang Dikerjakan'});
+                } catch (e) {
+                  debugPrint("Gagal update status: $e");
+                }
               },
               child: const Text("▶ Mulai Pengerjaan", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             )
@@ -200,10 +229,15 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () {
-                // Berpindah ke Form Bukti Penyelesaian
+                // Berpindah ke Form Bukti Penyelesaian dengan mengoper ID dan Data
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const OfficerProofScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => OfficerProofScreen(
+                      taskId: widget.taskId,
+                      taskData: widget.taskData,
+                    ),
+                  ),
                 );
               },
               child: const Text("📷 Buat Bukti Penyelesaian", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),

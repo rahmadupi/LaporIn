@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "1013782615021",
-    "project_id": "laporin-7c61e",
-    "storage_bucket": "laporin-7c61e.firebasestorage.app"
+    "project_number": "935968037047",
+    "project_id": "laporin-raihan-sandbox",
+    "storage_bucket": "laporin-raihan-sandbox.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1013782615021:android:10da62e4537cf56eee0de4",
+        "mobilesdk_app_id": "1:935968037047:android:f443277268e3b44deb9532",
         "android_client_info": {
           "package_name": "com.example.main"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCc7g9x4PwPk2v5R7KqSR1uxf8X3OmV2No"
+          "current_key": "AIzaSyC9Ngk4zM3Qw3kPYRSUoUSaEN2hZzMVMUI"
         }
       ],
       "services": {

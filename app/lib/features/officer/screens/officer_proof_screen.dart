@@ -5,10 +5,19 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart'; 
 import 'package:connectivity_plus/connectivity_plus.dart'; 
 import 'package:hive/hive.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt; // Import Speech-to-Text
+import 'package:speech_to_text/speech_to_text.dart' as stt; 
+import 'package:cloud_firestore/cloud_firestore.dart'; // TAMBAHAN: Mesin Firebase
 
 class OfficerProofScreen extends StatefulWidget {
-  const OfficerProofScreen({Key? key}) : super(key: key);
+  // TAMBAHAN: Variabel penerima data dari halaman detail
+  final String taskId;
+  final Map<String, dynamic> taskData;
+
+  const OfficerProofScreen({
+    Key? key, 
+    required this.taskId, 
+    required this.taskData
+  }) : super(key: key);
 
   @override
   State<OfficerProofScreen> createState() => _OfficerProofScreenState();
@@ -32,17 +41,18 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
   // === VARIABEL FORM & HIVE ===
   final TextEditingController _notesController = TextEditingController();
   late Box _offlineBox;
+  bool _isSubmitting = false; // Status loading saat mengirim
 
   // === VARIABEL VOICE-TO-TEXT ===
   late stt.SpeechToText _speech;
   bool _isListening = false;
-  String _previousText = ""; // Untuk menyimpan teks yang sudah diketik/diucapkan sebelumnya
+  String _previousText = ""; 
 
   @override
   void initState() {
     super.initState();
     _offlineBox = Hive.box('offline_proofs'); 
-    _speech = stt.SpeechToText(); // Inisialisasi engine suara
+    _speech = stt.SpeechToText(); 
     
     _checkInitialConnection();
     _loadSavedDraft(); 
@@ -62,23 +72,19 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
     });
   }
 
-  // === FUNGSI VOICE-TO-TEXT ===
   void _listen() async {
     if (!_isListening) {
       bool available = await _speech.initialize(
         onStatus: (val) {
-          debugPrint('onStatus: $val');
           if (val == 'done' || val == 'notListening') {
             setState(() => _isListening = false);
           }
         },
-        onError: (val) => debugPrint('onError: $val'),
       );
       
       if (available) {
         setState(() {
           _isListening = true;
-          // Simpan teks yang sudah ada agar tidak tertimpa saat mulai bicara baru
           _previousText = _notesController.text;
           if (_previousText.isNotEmpty && !_previousText.endsWith(" ")) {
             _previousText += " "; 
@@ -87,10 +93,9 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
         
         _speech.listen(
           onResult: (val) => setState(() {
-            // Gabungkan teks lama dengan hasil ucapan baru
             _notesController.text = _previousText + val.recognizedWords;
           }),
-          localeId: 'id_ID', // Paksa menggunakan bahasa Indonesia
+          localeId: 'id_ID', 
         );
       }
     } else {
@@ -132,6 +137,55 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
     }
   }
 
+  // === FUNGSI UTAMA: MENGIRIM BUKTI KE FIREBASE ===
+  Future<void> _submitProof() async {
+    if (_beforePhoto == null || _afterPhoto == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Lengkapi kedua foto terlebih dahulu!")),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      // 1. Simulasi Upload Foto (Pura-pura loading 2 detik)
+      await Future.delayed(const Duration(seconds: 2));
+
+      // 2. Ubah Status di Firebase menjadi 'Selesai'
+      await FirebaseFirestore.instance
+          .collection('assignments')
+          .doc(widget.taskId)
+          .update({
+            'status': 'Selesai',
+            'completion_notes': _notesController.text, // Menyimpan catatan ke database juga!
+          });
+
+      // 3. Bersihkan Hive Draft agar form kembali kosong untuk tugas berikutnya
+      await _offlineBox.delete('before_photo');
+      await _offlineBox.delete('after_photo');
+      await _offlineBox.delete('notes');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("🎉 Tugas berhasil diselesaikan!"), 
+            backgroundColor: Colors.green
+          ),
+        );
+        // Kembali ke halaman Beranda
+        Navigator.popUntil(context, (route) => route.isFirst);
+      }
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal mengirim: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _connectivitySubscription.cancel();
@@ -141,7 +195,6 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
 
   Future<void> _getCurrentLocation() async {
     setState(() => _isLoadingLocation = true);
-
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       setState(() => _isLoadingLocation = false);
@@ -151,19 +204,13 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
         setState(() => _isLoadingLocation = false);
         return;
       }
     }
-    
-    if (permission == LocationPermission.deniedForever) {
-      setState(() => _isLoadingLocation = false);
-      return;
-    }
 
     Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-
     setState(() {
       _currentPosition = position;
       _isLoadingLocation = false;
@@ -174,7 +221,6 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
   Future<void> _takePhoto(bool isBefore) async {
     try {
       final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 50);
-
       if (photo != null) {
         setState(() {
           if (isBefore) _beforePhoto = File(photo.path);
@@ -235,16 +281,19 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
   }
 
   Widget _buildTaskInfoCard() {
+    final title = widget.taskData['title'] ?? 'Tanpa Judul';
+    final location = widget.taskData['location'] ?? 'Lokasi tidak diketahui';
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Jalan Berlubang • Jl. Diponegoro No. 45", style: TextStyle(fontSize: 12)),
-          SizedBox(height: 4),
-          Text("LPR-2026-0001234", style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
+          Text("$title • $location", style: const TextStyle(fontSize: 12)),
+          const SizedBox(height: 4),
+          Text(widget.taskId, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, color: Colors.grey)),
         ],
       ),
     );
@@ -263,8 +312,6 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
             Expanded(child: _buildPhotoBox("📷 Foto SESUDAH", false, _afterPhoto)),
           ],
         ),
-        const SizedBox(height: 8),
-        Text("💡 Pastikan foto jelas dan mencakup area kerusakan", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       ],
     );
   }
@@ -310,16 +357,7 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
         ],
       );
     }
-
-    if (_currentPosition == null) {
-      return const Row(
-        children: [
-          Icon(Icons.location_off, color: Colors.grey, size: 20),
-          SizedBox(width: 8),
-          Text("Lokasi belum didapatkan (Ambil foto terlebih dahulu)", style: TextStyle(fontSize: 12, color: Colors.grey)),
-        ],
-      );
-    }
+    if (_currentPosition == null) return const SizedBox.shrink();
 
     return Row(
       children: [
@@ -327,10 +365,8 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            _isGpsMatch 
-                ? "Sesuai: Lat ${_currentPosition!.latitude.toStringAsFixed(4)}, Lng ${_currentPosition!.longitude.toStringAsFixed(4)}" 
-                : "Lokasi foto berjarak 80m dari tugas. Lanjutkan?",
-            style: TextStyle(fontSize: 12, color: _isGpsMatch ? Colors.green[800] : Colors.orange[800], fontWeight: FontWeight.bold),
+            "Lokasi terekam: Lat ${_currentPosition!.latitude.toStringAsFixed(4)}, Lng ${_currentPosition!.longitude.toStringAsFixed(4)}",
+            style: TextStyle(fontSize: 12, color: Colors.green[800], fontWeight: FontWeight.bold),
           ),
         ),
       ],
@@ -347,25 +383,20 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
           controller: _notesController,
           maxLines: 4,
           decoration: InputDecoration(
-            hintText: "Misal: Tambal aspal 2m², material HRS-Base...",
+            hintText: "Misal: Tambal aspal 2m²...",
             hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             suffixIcon: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // === TOMBOL MIKROFON YANG SUDAH HIDUP ===
                 IconButton(
-                  icon: Icon(
-                    _isListening ? Icons.mic : Icons.mic_none, 
-                    color: _isListening ? Colors.red : Colors.blue
-                  ),
-                  onPressed: _listen, // Panggil fungsi rekam suara saat ditekan
+                  icon: Icon(_isListening ? Icons.mic : Icons.mic_none, color: _isListening ? Colors.red : Colors.blue),
+                  onPressed: _listen, 
                 ),
               ],
             )
           ),
         ),
-        // === INDIKATOR VISUAL SAAT MEREKAM ===
         if (_isListening) 
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
@@ -393,7 +424,7 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
           Expanded(
             flex: 4,
             child: OutlinedButton(
-              onPressed: _saveDraftToHive, 
+              onPressed: _isSubmitting ? null : _saveDraftToHive, 
               child: const Text("Simpan Draft"),
             ),
           ),
@@ -402,8 +433,10 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
             flex: 6,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[700], foregroundColor: Colors.white),
-              onPressed: () {},
-              child: Text(_beforePhoto != null && _afterPhoto != null ? "Kirim Bukti" : "Lengkapi Foto"),
+              onPressed: _isSubmitting ? null : _submitProof,
+              child: _isSubmitting 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Text(_beforePhoto != null && _afterPhoto != null ? "Kirim Bukti" : "Lengkapi Foto"),
             ),
           ),
         ],
