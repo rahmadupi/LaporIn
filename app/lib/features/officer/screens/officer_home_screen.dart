@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'officer_task_detail_screen.dart'; // DIUBAH: Import beralih ke Task Detail
+import 'officer_task_detail_screen.dart'; 
+// TAMBAHAN: Import dua layar baru
+import 'officer_history_screen.dart';
+import 'officer_profile_screen.dart';
 
 class OfficerHomeScreen extends StatefulWidget {
   const OfficerHomeScreen({Key? key}) : super(key: key);
@@ -9,7 +12,10 @@ class OfficerHomeScreen extends StatefulWidget {
 }
 
 class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
+  // === VARIABEL NAVIGASI BAWAH ===
+  int _selectedBottomNavIndex = 0; 
   int _selectedFilterIndex = 0;
+  
   final List<String> _filters = [
     "Semua (5)",
     "Belum Dimulai (3)",
@@ -17,31 +23,64 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     "Mendesak"
   ];
 
+  // === FUNGSI PERUBAHAN LAYAR UTAMA ===
+  Widget _buildBodyContent() {
+    switch (_selectedBottomNavIndex) {
+      case 0:
+        return _buildActiveTasksView(); // Layar Beranda Utama
+      case 1:
+        return _buildActiveTasksView(); // Nanti akan diganti dengan Map Izzud
+      case 2:
+        return const OfficerHistoryScreen(); // Layar Riwayat (O4)
+      case 3:
+        return const OfficerProfileScreen(); // Layar Profil (O5)
+      default:
+        return _buildActiveTasksView();
+    }
+  }
+
+  // === FUNGSI PERPINDAHAN TAB ===
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedBottomNavIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      appBar: _buildOfficerAppBar(),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildTodaySummaryCard(),
-            _buildFilterChips(),
-            _buildSortDropdown(),
-            _buildTaskList(),
-          ],
-        ),
-      ),
+      appBar: _selectedBottomNavIndex == 0 ? _buildOfficerAppBar() : null, // AppBar Beranda hanya muncul di index 0
+      body: _buildBodyContent(), // Body akan berubah sesuai menu yang ditekan
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
+        currentIndex: _selectedBottomNavIndex,
         selectedItemColor: Colors.blue[700],
         unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed, // Wajib agar ikon tidak bergeser aneh
+        onTap: _onItemTapped, // Menjalankan fungsi perpindahan
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Tugas Aktif'),
+          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Tugas'),
           BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Peta'),
-          BottomNavigationBarItem(icon: Icon(Icons.check_circle), label: 'Selesai'),
+          BottomNavigationBarItem(icon: Icon(Icons.check_circle), label: 'Riwayat'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+        ],
+      ),
+    );
+  }
+
+  // =======================================================================
+  // KODE DI BAWAH INI ADALAH KODE LAMA MILIKMU (VIEW BERANDA), TIDAK ADA YANG SAYA UBAH
+  // =======================================================================
+
+  Widget _buildActiveTasksView() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTodaySummaryCard(),
+          _buildFilterChips(),
+          _buildSortDropdown(),
+          _buildTaskList(),
         ],
       ),
     );
@@ -228,7 +267,6 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
               const Text("Belum Dimulai", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
               TextButton(
                 onPressed: () {
-                   // DIUBAH: Navigasi sekarang mengarah ke Layar Detail Tugas
                    Navigator.push(
                      context,
                      MaterialPageRoute(
