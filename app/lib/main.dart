@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart'; // Import Hive
+import 'package:hive_flutter/hive_flutter.dart'; 
+import 'package:firebase_core/firebase_core.dart'; // Tambahan import Firebase
+import 'firebase_options.dart'; // Tambahan import file opsi dari Izzud
 import 'features/officer/screens/officer_home_screen.dart';
 
 void main() async {
-  // Wajib dipanggil sebelum inisialisasi hal lain di main()
+  // Wajib dipanggil pertama kali untuk mengunci biner Flutter
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Bangun fondasi database lokal Hive di HP
+  // 1. Nyalakan Mesin Firebase Cloud
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // 2. Bangun Fondasi Database Lokal Hive
   await Hive.initFlutter();
-  
-  // 2. Buka sebuah 'laci' khusus bernama 'offline_proofs' 
-  // Laci ini akan kita pakai untuk menyimpan foto dan catatan saat offline
   await Hive.openBox('offline_proofs');
 
   runApp(const MyApp());
