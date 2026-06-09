@@ -4,6 +4,8 @@ Sebuah aplikasi untuk mengakomodasi dan menampung laporan keresahan pada infrast
 
 # CLASS DIAGRAM
 
+![Class Diagram](./SRS/LaporIn_class_diagram.jpg "Class Diagram")
+
 # PROJECT STRUCTURE
 
 # DEV SETUP
