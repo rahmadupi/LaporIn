@@ -8,6 +8,8 @@ Sebuah aplikasi untuk mengakomodasi dan menampung laporan keresahan pada infrast
 
 # PROJECT STRUCTURE
 
+https://github.com/rahmadupi/LaporIn/blob/2c631f6c03a4f5aad8ba661fa0277cc85c410cdf/SRS/system-architecture.md?plain=1#L62-L131
+
 # DEV SETUP
 
 # DEMO
