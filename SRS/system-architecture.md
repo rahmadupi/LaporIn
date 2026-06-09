@@ -50,32 +50,82 @@ This layer handles everything the user sees and interacts with.
 
 ![Class Diagram](./LaporIn_class_diagram.jpg "Class Diagram")
 
-## 4.2. Project Structure
+## 4.2. Project Structure(App-Within-An-App Architecture)
 
-Takok gae structure gae per role ui
 
-<!--
-```lib/
-├── domain/
-│   ├── entities/
-│   │   ├── user_entity.dart
-│   │   └── report_entity.dart
-│   └── repositories/
-│       ├── user_repository.dart
-│       └── report_repository.dart
-├── data/
-│   ├── models/
-│   │   ├── user_model.dart
-│   │   └── report_model.dart
-│   └── repositories/
-│       ├── user_repository_impl.dart
-│       └── report_repository_impl.dart
-└── presentation/
-    ├── controllers/
-    │   ├── user_controller.dart
-    │   └── report_controller.dart
-    └── screens/
-        ├── user_screen.dart
-        └── report_screen.dart
+To maximize team coordination, prevent version control conflicts, and ensure scalable UI development, LaporIn utilizes an **"App-Within-An-App" (Role-First Presentation)** architecture.
+
+This structure treats the core business logic (Domain) and database interactions (Data) as a shared internal library. Meanwhile, the Presentation layer (UI and State Controllers) is split entirely by user role into isolated workspaces. This allows developers to work on the Citizen UI, Admin UI, and Officer UI simultaneously without ever modifying the same files.
+
+The Flutter `lib/` folder is divided into three main pillars: core utilities, shared backend logic, and the isolated UI applications.
+
+```text
+lib/
+├── core/
+│   ├── constants/
+│   │   ├── app_colors.dart
+│   │   └── app_text_styles.dart
+│   ├── errors/
+│   │   ├── exceptions.dart
+│   │   └── failures.dart
+│   ├── routing/
+│   │   └── role_router_gate.dart
+│   └── utils/
+│       ├── geohash_helper.dart
+│       └── date_formatter.dart
+├── shared_domain_data/
+│   ├── auth/
+│   │   ├── domain/ 
+│   │   │   ├── user_entity.dart
+│   │   │   └── iauth_repository.dart
+│   │   └── data/   
+│   │       ├── user_model.dart
+│   │       └── auth_repository_implement.dart
+│   ├── report/
+│   │   ├── domain/ 
+│   │   │   ├── report_entity.dart
+│   │   │   ├── comment_entity.dart
+│   │   │   └── ireport_repository.dart
+│   │   └── data/   
+│   │       ├── report_model.dart
+│   │       ├── comment_model.dart
+│   │       └── report_repository_implement.dart
+│   └── dispatch/
+│       ├── domain/ 
+│       │   ├── dispatch_entity.dart
+│       │   ├── officer_volunteer_entity.dart
+│       │   └── idispatch_repository.dart
+│       └── data/   
+│           ├── dispatch_model.dart
+│           ├── officer_model.dart
+│           └── dispatch_repository_implement.dart
+└── workspaces/
+    ├── admin_app/
+    │   ├── controllers/
+    │   │   ├── admin_auth_controller.dart
+    │   │   ├── admin_report_controller.dart
+    │   │   └── admin_dispatch_controller.dart
+    │   ├── screens/
+    │   │   ├── admin_dashboard_screen.dart
+    │   │   └── admin_assign_officer_screen.dart
+    │   └── widgets/
+    │       └── admin_data_table_widget.dart
+    ├── citizen_app/
+    │   ├── controllers/
+    │   │   ├── citizen_auth_controller.dart
+    │   │   └── citizen_report_controller.dart
+    │   ├── screens/
+    │   │   ├── citizen_map_feed_screen.dart
+    │   │   └── citizen_create_report_screen.dart
+    │   └── widgets/
+    │       └── citizen_report_card_widget.dart
+    └── officer_app/
+        ├── controllers/
+        │   ├── officer_auth_controller.dart
+        │   └── officer_task_controller.dart
+        ├── screens/
+        │   ├── officer_job_list_screen.dart
+        │   └── officer_job_execution_screen.dart
+        └── widgets/
+            └── officer_swipe_to_complete_widget.dart
 ```
- -->
