@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart'; 
-import 'package:firebase_core/firebase_core.dart'; // Tambahan import Firebase
-import 'firebase_options.dart'; // Tambahan import file opsi dari Izzud
-import 'features/officer/screens/officer_home_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; 
+// UBAH IMPORT: Sekarang kita arahkan pintu masuk ke halaman Login
+import 'features/officer/screens/officer_login_screen.dart';
 
 void main() async {
   // Wajib dipanggil pertama kali untuk mengunci biner Flutter
@@ -31,7 +32,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const OfficerHomeScreen(),
+      // UBAH HOME: Halaman pertama kali dibuka adalah Login
+      home: const OfficerLoginScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
