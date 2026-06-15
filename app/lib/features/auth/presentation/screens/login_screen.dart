@@ -7,6 +7,7 @@ import '../../../../core/utils/snackbar_helper.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../domain/entities/user_role.dart';
 import '../auth_navigator.dart';
 import '../providers/auth_provider.dart';
 
@@ -49,8 +50,20 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return; // Cek mounted karena ada gap async di atas.
 
     if (success) {
+      final role = auth.user!.role;
+      // Role tak dikenal (custom claims kosong & dokumen users/{uid} tidak
+      // ada/ tanpa field role). Jangan navigasi ke login secara diam-diam—
+      // beri tahu user agar tidak terlihat seperti tombol tidak berfungsi.
+      if (role == UserRole.unknown) {
+        SnackbarHelper.showError(
+          context,
+          'Akun berhasil masuk tetapi belum memiliki role. '
+          'Hubungi admin atau daftar ulang lewat aplikasi.',
+        );
+        return;
+      }
       // Arahkan ke home sesuai role hasil custom claims (role-based routing).
-      final route = AuthNavigator.homeRouteFor(auth.user!.role);
+      final route = AuthNavigator.homeRouteFor(role);
       Navigator.of(context).pushReplacementNamed(route);
     } else {
       // Tampilkan pesan kegagalan yang sudah diterjemahkan oleh provider.

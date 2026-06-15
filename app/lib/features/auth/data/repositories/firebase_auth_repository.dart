@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../domain/auth_failure.dart';
 import '../../domain/entities/app_user.dart';
@@ -141,10 +142,27 @@ class FirebaseAuthRepository implements AuthRepository {
 
       // Custom claim belum ada -> baca role dari Firestore sebagai cadangan.
       final doc = await _firestore.collection('users').doc(user.uid).get();
-      return UserRole.fromString(doc.data()?['role'] as String?);
-    } catch (_) {
+      if (!doc.exists) {
+        // Diagnostik: akun ada di Auth tapi belum punya dokumen users/{uid}
+        // (mis. dibuat langsung lewat Firebase Console). Role -> unknown.
+        debugPrint(
+          '[Auth] users/${user.uid} tidak ditemukan; role = unknown.',
+        );
+        return UserRole.unknown;
+      }
+      final role = UserRole.fromString(doc.data()?['role'] as String?);
+      if (role == UserRole.unknown) {
+        debugPrint(
+          '[Auth] Field "role" pada users/${user.uid} kosong/tidak valid '
+          '(nilai: ${doc.data()?['role']}).',
+        );
+      }
+      return role;
+    } catch (e) {
       // Apa pun kegagalannya, jangan crash—kembalikan unknown agar router
-      // bisa mengarahkan user ke layar yang aman.
+      // bisa mengarahkan user ke layar yang aman. Log agar bisa didiagnosis
+      // (mis. Firestore rules menolak read, atau perangkat offline).
+      debugPrint('[Auth] Gagal resolve role untuk ${user.uid}: $e');
       return UserRole.unknown;
     }
   }
