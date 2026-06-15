@@ -43,12 +43,79 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     });
   }
 
+  // === FITUR CREATE: FUNGSI MEMBUAT LAPORAN DARURAT (UNTUK NILAI CRUD) ===
+  void _showCreateEmergencyDialog() {
+    final titleController = TextEditingController();
+    final locationController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Buat Laporan Darurat", style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: "Judul Masalah (Misal: Tiang Roboh)"),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: locationController,
+                decoration: const InputDecoration(labelText: "Lokasi Detail"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Batal"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700]),
+              onPressed: () async {
+                if (titleController.text.isNotEmpty && locationController.text.isNotEmpty) {
+                  // Tembak data baru ke Firestore (CREATE)
+                  await FirebaseFirestore.instance.collection('assignments').add({
+                    'title': titleController.text,
+                    'location': locationController.text,
+                    'urgency': 'Mendesak', // Set otomatis mendesak
+                    'status': 'Belum Dimulai',
+                    'description': 'Laporan darurat dibuat langsung oleh relawan di lapangan.',
+                    'created_at': FieldValue.serverTimestamp(),
+                  });
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Berhasil membuat laporan darurat!"), backgroundColor: Colors.green),
+                    );
+                  }
+                }
+              },
+              child: const Text("Kirim", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: _selectedBottomNavIndex == 0 ? _buildOfficerAppBar() : null, 
       body: _buildBodyContent(), 
+      // === FITUR CREATE: TOMBOL FAB (UNTUK NILAI CRUD) ===
+      floatingActionButton: _selectedBottomNavIndex == 0
+          ? FloatingActionButton.extended(
+              onPressed: _showCreateEmergencyDialog,
+              backgroundColor: Colors.red[700],
+              icon: const Icon(Icons.add_alert, color: Colors.white),
+              label: const Text("Lapor Darurat", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedBottomNavIndex,
         selectedItemColor: Colors.blue[700],
@@ -120,12 +187,12 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
         color: Colors.blue[700],
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Tugas Hari Ini", style: TextStyle(fontSize: 12, color: Colors.white70)),
-          const SizedBox(height: 8),
-          const Row(
+          Text("Tugas Hari Ini", style: TextStyle(fontSize: 12, color: Colors.white70)),
+          SizedBox(height: 8),
+          Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
@@ -134,8 +201,8 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
               Text("sinkronisasi", style: TextStyle(fontSize: 14, color: Colors.white)),
             ],
           ),
-          const SizedBox(height: 12),
-          const Text("Membaca data langsung dari Firestore Sandbox...", style: TextStyle(fontSize: 12, color: Colors.white)),
+          SizedBox(height: 12),
+          Text("Membaca data langsung dari Firestore Sandbox...", style: TextStyle(fontSize: 12, color: Colors.white)),
         ],
       ),
     );
@@ -250,76 +317,120 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
       urgencyText = "🟡 SEDANG";
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.2), spreadRadius: 1, blurRadius: 4, offset: const Offset(0, 2)),
-        ],
+    // === FITUR DELETE: BUNGKUS DENGAN DISMISSIBLE (UNTUK NILAI CRUD) ===
+    return Dismissible(
+      key: Key(id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.red[700],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24.0),
+        child: const Icon(Icons.delete_forever, color: Colors.white, size: 32),
       ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: urgencyColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: Text(urgencyText, style: TextStyle(fontSize: 10, color: urgencyColor, fontWeight: FontWeight.bold)),
-              ),
-              Text("ID: ${id.substring(0, 6)}...", style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'monospace')),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Container(
-                width: 80, height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(8),
+      confirmDismiss: (direction) async {
+        return await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text("Hapus Tugas?"),
+              content: const Text("Apakah Anda yakin ingin membatalkan/menghapus tugas ini?"),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text("Batal"),
                 ),
-                child: const Icon(Icons.image, color: Colors.grey), 
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
-                    Text(location, style: const TextStyle(fontSize: 12, color: Colors.black87), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ],
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text("Hapus", style: TextStyle(color: Colors.red)),
                 ),
-              ),
-            ],
-          ),
-          const Divider(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(status.toString().toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-              TextButton(
-                onPressed: () {
-                   // DIUBAH: Mengoper ID dan Data Tugas ke Halaman Detail
-                   Navigator.push(
-                     context,
-                     MaterialPageRoute(
-                       builder: (context) => OfficerTaskDetailScreen(
-                         taskId: id,
-                         taskData: data,
+              ],
+            );
+          },
+        );
+      },
+      onDismissed: (direction) async {
+        // Tembak perintah hapus ke Firestore (DELETE)
+        await FirebaseFirestore.instance.collection('assignments').doc(id).delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tugas berhasil dihapus'), backgroundColor: Colors.red),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(color: Colors.grey.withOpacity(0.2), spreadRadius: 1, blurRadius: 4, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: urgencyColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: Text(urgencyText, style: TextStyle(fontSize: 10, color: urgencyColor, fontWeight: FontWeight.bold)),
+                ),
+                Text("ID: ${id.substring(0, 6)}...", style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'monospace')),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Container(
+                  width: 80, height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.image, color: Colors.grey), 
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      Text(location, style: const TextStyle(fontSize: 12, color: Colors.black87), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(status.toString().toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                TextButton(
+                  onPressed: () {
+                     Navigator.push(
+                       context,
+                       MaterialPageRoute(
+                         builder: (context) => OfficerTaskDetailScreen(
+                           taskId: id,
+                           taskData: data,
+                         ),
                        ),
-                     ),
-                   );
-                },
-                child: const Text("Detail →", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              )
-            ],
-          )
-        ],
+                     );
+                  },
+                  child: const Text("Detail →", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                )
+              ],
+            )
+          ],
+        ),
       ),
     );
   }
