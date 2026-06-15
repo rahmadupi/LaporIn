@@ -1,15 +1,16 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert'; // TAMBAHAN: Untuk mengubah foto menjadi Base64
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart'; 
 import 'package:connectivity_plus/connectivity_plus.dart'; 
 import 'package:hive/hive.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt; 
-import 'package:cloud_firestore/cloud_firestore.dart'; // TAMBAHAN: Mesin Firebase
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+import 'package:http/http.dart' as http; // TAMBAHAN: Kurir pengirim API ImgBB
 
 class OfficerProofScreen extends StatefulWidget {
-  // TAMBAHAN: Variabel penerima data dari halaman detail
   final String taskId;
   final Map<String, dynamic> taskData;
 
@@ -41,12 +42,15 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
   // === VARIABEL FORM & HIVE ===
   final TextEditingController _notesController = TextEditingController();
   late Box _offlineBox;
-  bool _isSubmitting = false; // Status loading saat mengirim
+  bool _isSubmitting = false; 
 
   // === VARIABEL VOICE-TO-TEXT ===
   late stt.SpeechToText _speech;
   bool _isListening = false;
   String _previousText = ""; 
+
+  // === KUNCI API IMGBB ===
+  final String _imgbbApiKey = '072ae2e1c37bce3c098abf56b08d9c89';
 
   @override
   void initState() {
@@ -137,7 +141,37 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
     }
   }
 
-  // === FUNGSI UTAMA: MENGIRIM BUKTI KE FIREBASE ===
+  // === FUNGSI BANTUAN: UPLOAD FOTO KE IMGBB ===
+  Future<String?> _uploadImageToImgBB(File imageFile) async {
+    try {
+      // Ubah gambar menjadi format Base64 yang bisa dikirim lewat HTTP
+      final bytes = await imageFile.readAsBytes();
+      final String base64Image = base64Encode(bytes);
+
+      // Tembak API ImgBB
+      final response = await http.post(
+        Uri.parse('https://api.imgbb.com/1/upload'),
+        body: {
+          'key': _imgbbApiKey,
+          'image': base64Image,
+        },
+      );
+
+      // Jika berhasil, ambil link gambarnya (URL)
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        return responseData['data']['display_url'];
+      } else {
+        debugPrint("Gagal upload ImgBB: ${response.statusCode}");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("Error upload ImgBB: $e");
+      return null;
+    }
+  }
+
+  // === FUNGSI UTAMA: MENGIRIM BUKTI (API + FIREBASE) ===
   Future<void> _submitProof() async {
     if (_beforePhoto == null || _afterPhoto == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -149,19 +183,33 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      // 1. Simulasi Upload Foto (Pura-pura loading 2 detik)
-      await Future.delayed(const Duration(seconds: 2));
+      // 1. Upload kedua foto ke ImgBB secara BERSAMAAN (biar tidak lama)
+      final uploadResults = await Future.wait([
+        _uploadImageToImgBB(_beforePhoto!),
+        _uploadImageToImgBB(_afterPhoto!),
+      ]);
 
-      // 2. Ubah Status di Firebase menjadi 'Selesai'
+      final beforeUrl = uploadResults[0];
+      final afterUrl = uploadResults[1];
+
+      // Pastikan kedua foto sukses terupload sebelum lanjut ke Firebase
+      if (beforeUrl == null || afterUrl == null) {
+        throw Exception("Gagal mengunggah foto ke server. Periksa koneksi Anda.");
+      }
+
+      // 2. Simpan Catatan dan LINK FOTO ASLI ke Firestore
       await FirebaseFirestore.instance
           .collection('assignments')
           .doc(widget.taskId)
           .update({
             'status': 'Selesai',
-            'completion_notes': _notesController.text, // Menyimpan catatan ke database juga!
+            'completion_notes': _notesController.text, 
+            'photo_before_url': beforeUrl, // <-- Ini integrasi API-nya!
+            'photo_after_url': afterUrl,   // <-- Ini integrasi API-nya!
+            'completed_at': FieldValue.serverTimestamp(), // Catat waktu selesai
           });
 
-      // 3. Bersihkan Hive Draft agar form kembali kosong untuk tugas berikutnya
+      // 3. Bersihkan Hive Draft agar form kembali kosong
       await _offlineBox.delete('before_photo');
       await _offlineBox.delete('after_photo');
       await _offlineBox.delete('notes');
@@ -169,7 +217,7 @@ class _OfficerProofScreenState extends State<OfficerProofScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("🎉 Tugas berhasil diselesaikan!"), 
+            content: Text("🎉 Tugas selesai dan Foto sukses diunggah!"), 
             backgroundColor: Colors.green
           ),
         );
