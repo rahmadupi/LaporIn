@@ -4,7 +4,8 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'citizen_home_screen.dart';
 import 'citizen_profile_screen.dart';
-import 'placeholder_tab_screen.dart';
+import 'map_screen.dart';
+import 'watch_zone_list_screen.dart';
 
 /// Main Navigation Wrapper untuk area Citizen.
 ///
@@ -33,9 +34,9 @@ class _CitizenMainNavigationState extends State<CitizenMainNavigation> {
   // baru tersedia setelah instance state dibuat.
   late final List<Widget> _pages = [
     CitizenHomeScreen(onReportTap: _onReportTap),
-    const PlaceholderTabScreen(title: 'Peta', icon: Icons.map_outlined),
-    const PlaceholderTabScreen(
-        title: 'Watch Zones', icon: Icons.remove_red_eye_outlined),
+    const MapScreen(),
+    // Daftar Watch Zone; membuat/mengedit zona dibuka via push dari layar ini.
+    const WatchZoneListScreen(),
     const CitizenProfileScreen(),
   ];
 

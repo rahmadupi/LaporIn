@@ -11,16 +11,26 @@ class WatchZoneCardWidget extends StatelessWidget {
     super.key,
     required this.zoneName,
     required this.activityText,
+    this.hasActivity = true,
+    this.onTap,
   });
 
   final String zoneName;
 
-  /// Teks aktivitas (mis. "2 laporan baru hari ini"), ditonjolkan oranye.
+  /// Teks aktivitas (mis. "2 laporan baru hari ini").
   final String activityText;
+
+  /// Apakah ada aktivitas baru. Bila true teks oranye (menarik perhatian),
+  /// bila false abu-abu lembut (mis. "Tidak ada aktivitas baru").
+  final bool hasActivity;
+
+  /// Aksi tap kartu (mis. buka layar Atur Watch Zone). Bila null, kartu tidak
+  /// dapat di-tap — dipakai di Beranda yang hanya menampilkan ringkasan.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -56,9 +66,10 @@ class WatchZoneCardWidget extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   activityText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.accent,
+                    color:
+                        hasActivity ? AppColors.accent : AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -67,6 +78,17 @@ class WatchZoneCardWidget extends StatelessWidget {
           ),
           const Icon(Icons.chevron_right, color: AppColors.textSecondary),
         ],
+      ),
+    );
+
+    if (onTap == null) return card;
+    return Semantics(
+      button: true,
+      label: 'Watch Zone $zoneName',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: card,
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
@@ -18,12 +19,18 @@ class NearbyReport {
     required this.statusColor,
     required this.imageColor,
     required this.imageIcon,
+    this.location,
   });
 
   final String title;
   final String address;
   final String distance;
   final String timeAgo;
+
+  /// Koordinat di peta (opsional). Dipakai layar Peta untuk menempatkan marker;
+  /// di Beranda (list horizontal) field ini tidak terpakai sehingga dibuat
+  /// nullable agar model tetap satu sumber untuk kedua layar.
+  final LatLng? location;
 
   /// Label & warna badge status (mis. "Diproses" oranye, "Menunggu" merah).
   final String statusLabel;
@@ -45,6 +52,7 @@ class NearbyReport {
       statusColor: AppColors.accent,
       imageColor: Color(0xFF5B6472),
       imageIcon: Icons.dangerous_outlined,
+      location: LatLng(-7.4478, 112.7183),
     ),
     NearbyReport(
       title: 'Lampu Jalan Mati',
@@ -55,6 +63,7 @@ class NearbyReport {
       statusColor: AppColors.error,
       imageColor: Color(0xFF3D6FBF),
       imageIcon: Icons.lightbulb_outline,
+      location: LatLng(-7.4521, 112.7106),
     ),
     NearbyReport(
       title: 'Drainase Tersumbat',
@@ -65,6 +74,7 @@ class NearbyReport {
       statusColor: AppColors.success,
       imageColor: Color(0xFF12B76A),
       imageIcon: Icons.water_drop_outlined,
+      location: LatLng(-7.4432, 112.7259),
     ),
   ];
 }
