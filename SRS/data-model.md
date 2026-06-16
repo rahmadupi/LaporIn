@@ -33,6 +33,11 @@ This document outlines the schema-less document structure for the LaporIn platfo
 "categoryId": "cat_roads", // References settings/categories
 "urgencyLevel": "high", // "low" | "medium" | "high" | "critical"
 "status": "pending", // "pending" | "in_review" | "dispatched" | "in_progress" | "resolved" | "rejected"
+"rejectComment": null, // Admin-filled reason when rejecting a report
+"appealRequested": false, // true when citizen submits an appeal
+"appealReason": null, // Citizen-filled reason when appealing
+"appealAt": null, // Timestamp when appeal was submitted
+"duplicateOfId": null, // If this report is marked as a duplicate, this field references the original reportId
 "imageUrl": "https://firebasestorage.googleapis.com/.../pothole.jpg",
 "location": {
 "latitude": -7.2575,
@@ -58,6 +63,7 @@ This document outlines the schema-less document structure for the LaporIn platfo
 "authorId": "user_xyz123",
 "authorName": "Bisma Pahlevi", // Duplicated here to save a secondary 'users' read query
 "authorRole": "admin",
+"isAdminOnly": "false", // If true, this comment is only visible to Admins in the UI
 "text": "Kami akan segera menugaskan tim ke lokasi.",
 "createdAt": "2026-06-09T04:00:00Z"
 }
@@ -93,27 +99,31 @@ This document outlines the schema-less document structure for the LaporIn platfo
 
 ## 3.4. Collection: `settings` (Global Configurations)
 
-**Path:** `/settings/categories`
-**Description:** A single configuration document to manage dynamic dropdown lists without requiring app updates.
+**Path:** `/settings/categories/{categoryId}`
+**Description:** multiple document to manage dynamic dropdown lists without requiring app updates.
 
-// Document ID: 'categories'
 {
-"list": [
-{
-"id": "cat_roads",
+"categoryId": "cat_roads",
 "name": "Jalan Rusak",
-"isActive": true
-},
-{
-"id": "cat_drainage",
-"name": "Saluran Air/Banjir",
-"isActive": true
-},
-{
-"id": "cat_lighting",
-"name": "Penerangan Jalan",
-"isActive": true
+"isActive": true,
+"updatedAt": "2026-06-16T19:00:00Z"
 }
-],
-"updatedAt": "2026-06-01T00:00:00Z"
+
+## 3.5. Collection: `auditlogs`
+
+**Path:** `/audit_logs/{logId}`
+**Description:** logs for data audition no presentation
+
+```json
+{
+  "logId": "log_auto_generated",
+  "adminId": "user_xyz123",
+  "action": "UPDATE_REPORT_STATUS",
+  "targetId": "rep_987abc",
+  "details": {
+    "previousState": "pending",
+    "newState": "in_review"
+  },
+  "timestamp": "2026-06-16T19:30:00Z"
 }
+```

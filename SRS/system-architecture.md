@@ -60,6 +60,10 @@ This structure treats the core business logic (Domain) and database interactions
 The Flutter `lib/` folder is divided into three main pillars: core utilities, shared backend logic, and the isolated UI applications.
 
 ```text
+assets/
+├── fonts/
+├── icons/
+├── images/
 lib/
 ├── core/
 │   ├── constants/

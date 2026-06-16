@@ -3,7 +3,7 @@
 ### Functional Requirements (FR) - Admin Layer
 
 | ID          | Deskripsi Kebutuhan                                                                                                                                                                         | Target Implementasi (Serverless)                                                                 |
-| :---------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| :---------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------- | ------------------------------------------------------ |
 | **ADM-001** | Akun admin dibuat secara khusus melalui form/metode internal terproteksi.                                                                                                                   | Firebase Auth Custom Claims (`isAdmin: true`)                                                    |
 | **ADM-002** | Admin dapat melihat daftar semua laporan warga dengan status `Pending`, `In Review`, `Dispatched`, dan `In Progress` (menunggu respons).                                                    | Real-time Stream Queries pada Firestore                                                          |
 | **ADM-003** | Admin dapat melakukan penolakan (`Rejected`) terhadap laporan yang tidak valid.                                                                                                             | Firestore Document Update                                                                        |
@@ -24,6 +24,11 @@
 |             | **ADM-018**                                                                                                                                                                                 | Admin dapat mengakses halaman profil untuk mengubah informasi pribadi dan preferensi notifikasi. | Firebase Auth User Management & Firestore User Profile |
 | **ADM-019** | Admin dapat melakukan pemblokiran (ban/suspend) terhadap akun warga yang terbukti melakukan spam laporan palsu. (Tambahan)Cloud Functions (Update Firebase Auth status & Firestore status)  | Firestore Update pada koleksi global /settings/categories                                        |
 | **ADM-020** | Admin dapat mengelola kategori pelaporan infrastruktur (menambah, menonaktifkan kategori seperti Jalan, Drainase, dll). (Tambahan)Firestore Update pada koleksi global /settings/categories | Firestore Update pada koleksi global /settings/categories                                        |
+| **ADM-021** | Admin dapat Log Out dari akun admin.                                                                                                                                                        | Firebase Auth Sign Out + Clear Local Storage                                                     |
+| **ADM-022** | Admin dapat menghapus (delete) akun admin sendiri.                                                                                                                                          | Firebase Auth Account Delete + Firestore User Profile Delete                                     |                                                        | **ADM-023** | Admin dapat melihat daftar appeals (banding) dari warga yang laporan ditolak. | Firestore Query `where("appealRequested", "==", true)` |
+| **ADM-024** | Admin dapat menerima atau menolak appeal warga.                                                                                                                                             | Firestore Document Update (Accept: status → in_review, Reject: appealRequested → false)          |
+| **ADM-025** | Admin dapat melihat daftar pengguna yang diblokir (banned).                                                                                                                                 | Firestore Query `where("isActive", "==", false)`                                                 |
+| **ADM-026** | Admin dapat melakukan unbanned (membuka blokir) pengguna yang sebelumnya diblokir.                                                                                                          | Firestore Document Update `isActive: true`                                                       |
 
 > Note Implementasi: Beberapa kebutuhan tergantung pada implementasi pada role petugas lapangan dan warga.
 
@@ -41,6 +46,24 @@
 
 - **BR-ADM-001 (Presentation Anonymity):** Laporan yang ditandai sebagai "Anonim" oleh warga hanya disembunyikan identitasnya pada _Presentation Layer_ (Antarmuka Flutter). _Data Layer_ (Firestore) tetap menyimpan `reporterId` asli untuk kebutuhan relasi data, audit sistem, dan pengiriman push notification target ke pengirim asli ketika status laporan berubah.
 
+- **BR-ADM-002 (Role-Based Access Control):**
+  - **Admin:** Hanya dapat moderate report & comment, assign officer, manage categories, view analytics. Admin TIDAK dapat membuat report atau bertindak sebagai officer.
+  - **Officer:** Hanya dapat melihat dan mengerjakan dispatch yang ditugaskan, update status laporan, upload bukti perbaikan.
+  - **Citizen:** Hanya dapat membuat report, komentar, dan melihat status laporan milik sendiri.
+
+### Aturan Keamanan per Role (Security Rules)
+
+| Action                | Admin    | Officer  | Citizen  |
+| --------------------- | -------- | -------- | -------- |
+| Membuat laporan       | ❌ Tidak | ❌ Tidak | ✅ Ya    |
+| Accept/Reject laporan | ✅ Ya    | ❌ Tidak | ❌ Tidak |
+| Dispatch officer      | ✅ Ya    | ❌ Tidak | ❌ Tidak |
+| Menerima dispatch     | ❌ Tidak | ✅ Ya    | ❌ Tidak |
+| Moderasi komentar     | ✅ Ya    | ❌ Tidak | ❌ Tidak |
+| Ban user              | ✅ Ya    | ❌ Tidak | ❌ Tidak |
+| View analytics        | ✅ Ya    | ❌ Tidak | ❌ Tidak |
+| Manage categories     | ✅ Ya    | ❌ Tidak | ❌ Tidak |
+
 ### Page Content & UI/UX Notes
 
 - **Admin Dashboard:**:
@@ -52,9 +75,14 @@
   - Notifikasi real-time untuk laporan baru dan update status laporan yang sedang diproses.
 
 - **Admin Laporan:**:
+  - [SUBSECTION] Report List
+  - Tampilan daftar laporan dengan opsi filter dan pencarian.
+  - Setiap item laporan menampilkan informasi singkat (judul, lokasi, status, tingkat urgensi) dan opsi untuk melihat detail laporan.
   - Detail laporan dengan informasi lengkap, foto, komentar warga, dan tombol aksi (Accept, Reject). Note tombol accept merubah status laporan menjadi `In review` dan merubah tombol accept menjadi dispatch yang mengarah pada form dispatch untuk memilih petugas lapangan yang akan ditugaskan.
   - Fitur untuk melihat riwayat komentar dan interaksi terkait laporan tersebut.
+  - Fitur sorting komen
   - Opsi untuk menambahkan catatan internal yang hanya dapat dilihat oleh admin lain (tidak terlihat oleh warga).
+  - [SUBSECTION] Report Controller, Menambah kategori laporan
 
 - **Admin Peta:**:
   - Tampilan peta interaktif dengan marker untuk setiap laporan yang masuk, berwarna berdasarkan status laporan (misal: merah untuk Pending, kuning untuk In Review, hijau untuk Resolved).
@@ -69,5 +97,5 @@
 - **Admin Profile:**:
   - Halaman profil admin dengan informasi pribadi dan opsi untuk mengubah password.
   - Fitur untuk mengelola preferensi notifikasi dan pengaturan akun.
-
-### Admin Rule
+  - opsi untuk menghapus akun
+  - opsi untuk mengatur nama pengguna
