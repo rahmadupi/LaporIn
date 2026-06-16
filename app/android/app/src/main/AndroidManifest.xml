@@ -14,13 +14,16 @@
         android:label="main"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        <!-- TODO(maps): Ganti YOUR_MAPS_API_KEY_HERE dengan Google Maps API key
-             Anda agar peta di Step 3 menampilkan tile. Tanpa key valid, peta
-             tampil kosong tetapi aplikasi TIDAK crash — koordinat & alamat dari
-             GPS/geocoding tetap berfungsi sehingga laporan tetap bisa dikirim. -->
+        <!-- Google Maps API key TIDAK ditulis di sini (tidak boleh masuk ke
+             source control). Nilainya diinjeksi saat build dari
+             manifestPlaceholders["MAPS_API_KEY"] yang dibaca Gradle dari
+             local.properties (lihat android/app/build.gradle.kts &
+             docs/GOOGLE_MAPS_SETUP.md). Tanpa key valid, peta tampil kosong
+             tetapi aplikasi TIDAK crash — koordinat & alamat dari GPS/geocoding
+             tetap berfungsi sehingga laporan tetap bisa dikirim. -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_MAPS_API_KEY_HERE"/>
+            android:value="${MAPS_API_KEY}"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

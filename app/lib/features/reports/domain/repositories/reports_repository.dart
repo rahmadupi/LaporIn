@@ -37,6 +37,21 @@ abstract class ReportsRepository {
   /// otomatis memancarkan list terbaru.
   Stream<List<Report>> watchUserReports(String reporterId);
 
+  /// Stream laporan PUBLIK terbaru (semua warga) yang belum dihapus, untuk
+  /// "Laporan Terdekat" di Beranda & Peta. Dibatasi [limit] dokumen terbaru;
+  /// penyaringan jarak dilakukan di sisi klien (Firestore tak punya radius-query).
+  Stream<List<Report>> watchPublicReports({int limit});
+
+  /// Ambil sekali laporan publik aktif (belum dihapus & belum selesai) dalam
+  /// radius [radiusMeters] dari ([latitude],[longitude]). Dipakai pratinjau
+  /// aktivitas Watch Zone. Penyaringan jarak dilakukan di klien.
+  Future<List<Report>> nearbyActiveReports({
+    required double latitude,
+    required double longitude,
+    required double radiusMeters,
+    int candidateLimit,
+  });
+
   /// Stream real-time satu laporan berdasarkan [reportId] untuk halaman Detail
   /// (timeline ikut hidup saat status berubah). Memancarkan null bila dokumen
   /// tidak ada / sudah dihapus.

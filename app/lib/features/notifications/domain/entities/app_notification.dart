@@ -3,100 +3,52 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 
 /// Jenis notifikasi — menentukan ikon & warna lingkaran di tile.
+///
+/// [slug] adalah nilai yang disimpan di field `type` Firestore (stabil walau
+/// label/ikon UI berubah). Slug tak dikenal jatuh ke [info] agar UI tak crash.
 enum NotificationType {
-  statusUpdate(Icons.update, AppColors.primary),
-  completed(Icons.check_circle, AppColors.success),
-  assignment(Icons.warning_amber_rounded, AppColors.accent),
-  info(Icons.info_outline, AppColors.primary);
+  statusUpdate('status_update', Icons.update, AppColors.primary),
+  completed('completed', Icons.check_circle, AppColors.success),
+  assignment('assignment', Icons.warning_amber_rounded, AppColors.accent),
+  info('info', Icons.info_outline, AppColors.primary);
 
-  const NotificationType(this.icon, this.color);
+  const NotificationType(this.slug, this.icon, this.color);
+  final String slug;
   final IconData icon;
   final Color color;
+
+  static NotificationType fromSlug(String? value) {
+    return values.firstWhere(
+      (t) => t.slug == value,
+      orElse: () => NotificationType.info,
+    );
+  }
 }
 
-/// Model DUMMY satu item notifikasi di Notification Center.
+/// Satu item notifikasi yang dibaca dari koleksi `notifications` Firestore.
 ///
 /// [reportId] opsional: bila ada, mengetuk notifikasi membuka Detail Laporan
-/// terkait — sama seperti perilaku deep link dari push notification FCM.
+/// terkait — sama seperti perilaku deep link push notification FCM.
 class AppNotification {
   const AppNotification({
     required this.id,
+    required this.userId,
     required this.title,
-    required this.body,
-    required this.time,
+    required this.message,
     required this.type,
-    this.isRead = false,
+    required this.isRead,
+    required this.createdAt,
     this.reportId,
   });
 
   final String id;
+  final String userId;
   final String title;
-  final String body;
-
-  /// Label waktu yang sudah diformat untuk tampilan (mis. "10:30", "Selasa").
-  final String time;
+  final String message;
   final NotificationType type;
   final bool isRead;
+
+  /// Waktu pembuatan (server). Diformat ke teks relatif saat ditampilkan.
+  final DateTime? createdAt;
   final String? reportId;
-}
-
-/// Satu kelompok notifikasi berdasarkan waktu (mis. "Hari Ini").
-class NotificationGroup {
-  const NotificationGroup({required this.label, required this.items});
-
-  final String label;
-  final List<AppNotification> items;
-
-  /// Data contoh statis sesuai mockup Notification Center.
-  static const List<NotificationGroup> dummyGroups = [
-    NotificationGroup(
-      label: 'Hari Ini',
-      items: [
-        AppNotification(
-          id: 'n1',
-          title: 'Status Laporan Diperbarui',
-          body: 'Laporan LPR-2026-0001234 sedang ditinjau oleh petugas.',
-          time: '10:30',
-          type: NotificationType.statusUpdate,
-          reportId: 'LPR-2026-0001234', // Bisa di-tap menuju detail.
-        ),
-        AppNotification(
-          id: 'n2',
-          title: 'Laporan Selesai',
-          body: 'Perbaikan jalan di Jl. Diponegoro telah selesai dilakukan. '
-              'Lihat hasilnya!',
-          time: '08:15',
-          type: NotificationType.completed,
-          isRead: true,
-          reportId: 'LPR-2026-0001234',
-        ),
-      ],
-    ),
-    NotificationGroup(
-      label: 'Kemarin',
-      items: [
-        AppNotification(
-          id: 'n3',
-          title: 'Tugas Baru Menunggu',
-          body: 'Anda ditugaskan untuk memvalidasi pengerjaan di UPT Selatan.',
-          time: '14:20',
-          type: NotificationType.assignment,
-        ),
-      ],
-    ),
-    NotificationGroup(
-      label: 'Minggu Ini',
-      items: [
-        AppNotification(
-          id: 'n4',
-          title: 'Tips LaporIn',
-          body: 'Gunakan fitur Watch Zone untuk memantau keamanan di sekitar '
-              'rumah Anda.',
-          time: 'Selasa',
-          type: NotificationType.info,
-          isRead: true,
-        ),
-      ],
-    ),
-  ];
 }

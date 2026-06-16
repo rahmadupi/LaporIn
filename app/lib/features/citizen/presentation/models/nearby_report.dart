@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/utils/geo_distance.dart';
+import '../../../reports/domain/entities/report.dart';
 
-/// Model data DUMMY untuk satu kartu di daftar "Laporan Terdekat".
+/// View model satu kartu "Laporan Terdekat" (Beranda & Peta).
 ///
-/// Dibuat sebagai model tersendiri (bukan sekadar Map) agar widget kartu
-/// punya kontrak data yang jelas dan type-safe. Pada tahap ini semua nilainya
-/// statis; ketika fitur Reports asli dibangun, model ini cukup diganti dengan
-/// entitas Firestore tanpa mengubah widget yang mengonsumsinya.
+/// Bukan data dummy: dibangun dari entitas [Report] asli Firestore lewat
+/// [NearbyReport.fromReport]. Memisahkan view model dari entitas domain menjaga
+/// widget kartu tetap presentational dan tidak bergantung pada tipe Firestore.
 class NearbyReport {
   const NearbyReport({
+    required this.reportId,
+    required this.categorySlug,
     required this.title,
     required this.address,
     required this.distance,
@@ -22,59 +26,68 @@ class NearbyReport {
     this.location,
   });
 
+  final String reportId;
+
+  /// Slug kategori (untuk filter chip di Peta).
+  final String categorySlug;
   final String title;
   final String address;
   final String distance;
   final String timeAgo;
 
-  /// Koordinat di peta (opsional). Dipakai layar Peta untuk menempatkan marker;
-  /// di Beranda (list horizontal) field ini tidak terpakai sehingga dibuat
-  /// nullable agar model tetap satu sumber untuk kedua layar.
+  /// Koordinat di peta (selalu ada untuk laporan asli).
   final LatLng? location;
 
-  /// Label & warna badge status (mis. "Diproses" oranye, "Menunggu" merah).
+  /// Label & warna badge status (mengikuti ReportStatus).
   final String statusLabel;
   final Color statusColor;
 
-  /// Karena belum ada foto asli dari Storage, kartu memakai blok warna +
-  /// ikon sebagai placeholder gambar kerusakan.
+  /// Blok warna + ikon mewakili kategori (thumbnail ringan tanpa memuat foto).
   final Color imageColor;
   final IconData imageIcon;
 
-  /// Data contoh untuk mengisi list horizontal di Beranda.
-  static const List<NearbyReport> dummyList = [
-    NearbyReport(
-      title: 'Jalan Berlubang Parah',
-      address: 'Jl. Diponegoro, Sidoarjo',
-      distance: '0.5 km',
-      timeAgo: '2 jam lalu',
-      statusLabel: 'Diproses',
-      statusColor: AppColors.accent,
-      imageColor: Color(0xFF5B6472),
-      imageIcon: Icons.dangerous_outlined,
-      location: LatLng(-7.4478, 112.7183),
-    ),
-    NearbyReport(
-      title: 'Lampu Jalan Mati',
-      address: 'Perum. Taman Pinang, Sidoarjo',
-      distance: '1.2 km',
-      timeAgo: '5 jam lalu',
-      statusLabel: 'Menunggu',
-      statusColor: AppColors.error,
-      imageColor: Color(0xFF3D6FBF),
-      imageIcon: Icons.lightbulb_outline,
-      location: LatLng(-7.4521, 112.7106),
-    ),
-    NearbyReport(
-      title: 'Drainase Tersumbat',
-      address: 'Jl. Pahlawan, Sidoarjo',
-      distance: '2.0 km',
-      timeAgo: '1 hari lalu',
-      statusLabel: 'Selesai',
-      statusColor: AppColors.success,
-      imageColor: Color(0xFF12B76A),
-      imageIcon: Icons.water_drop_outlined,
-      location: LatLng(-7.4432, 112.7259),
-    ),
-  ];
+  /// Bangun dari [report]. Bila [originLat]/[originLng] tersedia (lokasi GPS
+  /// pengguna), jarak dihitung; jika tidak, tampilkan placeholder netral.
+  factory NearbyReport.fromReport(
+    Report report, {
+    double? originLat,
+    double? originLng,
+  }) {
+    final distanceLabel = (originLat != null && originLng != null)
+        ? GeoDistance.format(
+            GeoDistance.meters(
+              originLat,
+              originLng,
+              report.latitude,
+              report.longitude,
+            ),
+          )
+        : 'Sekitar';
+
+    return NearbyReport(
+      reportId: report.reportId,
+      categorySlug: report.category.slug,
+      title: report.category.label,
+      address: report.address.isNotEmpty ? report.address : 'Lokasi laporan',
+      distance: distanceLabel,
+      timeAgo: DateFormatter.relative(report.createdAt),
+      statusLabel: report.status.label,
+      statusColor: report.status.color,
+      imageColor: _categoryColor(report),
+      imageIcon: report.category.icon,
+      location: LatLng(report.latitude, report.longitude),
+    );
+  }
+
+  /// Warna thumbnail berdasarkan keparahan agar konsisten lintas kartu.
+  static Color _categoryColor(Report report) {
+    switch (report.severity.slug) {
+      case 'high':
+        return const Color(0xFF5B6472);
+      case 'low':
+        return const Color(0xFF12B76A);
+      default:
+        return AppColors.primary;
+    }
+  }
 }

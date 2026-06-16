@@ -15,6 +15,7 @@ class RadiusSlider extends StatelessWidget {
     required this.min,
     required this.max,
     required this.onChanged,
+    this.onChangeEnd,
   });
 
   /// Nilai radius saat ini dalam meter.
@@ -22,6 +23,9 @@ class RadiusSlider extends StatelessWidget {
   final double min;
   final double max;
   final ValueChanged<double> onChanged;
+
+  /// Dipanggil saat geser selesai (mis. untuk memicu perhitungan ulang).
+  final ValueChanged<double>? onChangeEnd;
 
   /// Ubah meter menjadi label ringkas: "500m" atau "2.5km" (tanpa nol berlebih).
   static String formatRadius(double meters) {
@@ -76,6 +80,7 @@ class RadiusSlider extends StatelessWidget {
             min: min,
             max: max,
             onChanged: onChanged,
+            onChangeEnd: onChangeEnd,
           ),
         ),
         // Penanda skala selaras ujung-ujung track.

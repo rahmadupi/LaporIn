@@ -9,13 +9,16 @@ import '../models/nearby_report.dart';
 /// metadata jarak/waktu) tidak menggemukkan screen. Menerima [NearbyReport]
 /// sehingga mudah diisi data dummy sekarang maupun data Firestore nanti.
 class ReportCardWidget extends StatelessWidget {
-  const ReportCardWidget({super.key, required this.report});
+  const ReportCardWidget({super.key, required this.report, this.onTap});
 
   final NearbyReport report;
 
+  /// Aksi tap kartu (mis. buka Detail Laporan). Bila null, kartu tidak bisa di-tap.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       width: 210,
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -103,6 +106,13 @@ class ReportCardWidget extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    if (onTap == null) return card;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: card,
     );
   }
 

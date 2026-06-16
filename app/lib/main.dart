@@ -12,8 +12,12 @@ import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/register_screen.dart';
 import 'features/auth/presentation/screens/role_placeholder_screen.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
+import 'features/citizen/data/repositories/firebase_watch_zone_repository.dart';
+import 'features/citizen/domain/repositories/watch_zone_repository.dart';
 import 'features/citizen/presentation/screens/citizen_main_navigation.dart';
+import 'features/notifications/data/firebase_notification_repository.dart';
 import 'features/notifications/data/notification_service.dart';
+import 'features/notifications/domain/repositories/notification_repository.dart';
 import 'features/notifications/presentation/screens/notification_screen.dart';
 import 'features/reports/data/repositories/firebase_reports_repository.dart';
 import 'features/reports/domain/repositories/reports_repository.dart';
@@ -70,6 +74,14 @@ class LaporInApp extends StatelessWidget {
         // membaca implementasi Firebase tanpa meng-import SDK di UI (NFR-6).
         Provider<ReportsRepository>(
           create: (_) => FirebaseReportsRepository(),
+        ),
+        // Repository notifikasi & watch zone (data REAL Firestore) untuk fitur
+        // Notification Center dan Watch Zones.
+        Provider<NotificationRepository>(
+          create: (_) => FirebaseNotificationRepository(),
+        ),
+        Provider<WatchZoneRepository>(
+          create: (_) => FirebaseWatchZoneRepository(),
         ),
       ],
       child: MaterialApp(

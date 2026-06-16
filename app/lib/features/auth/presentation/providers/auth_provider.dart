@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../notifications/data/fcm_token_service.dart';
 import '../../domain/auth_failure.dart';
 import '../../domain/entities/app_user.dart';
 import '../../domain/entities/user_role.dart';
@@ -20,9 +21,13 @@ enum AuthStatus {
 /// method di sini, provider memanggil repository, lalu memanggil
 /// [notifyListeners] agar widget yang menyimak ikut rebuild.
 class AuthProvider extends ChangeNotifier {
-  AuthProvider(this._repository);
+  AuthProvider(this._repository, {FcmTokenService? fcmTokenService})
+      : _fcmTokenService = fcmTokenService ?? FcmTokenService();
 
   final AuthRepository _repository;
+
+  /// Mendaftarkan/menghapus FCM token ke users/{uid} mengikuti sesi login.
+  final FcmTokenService _fcmTokenService;
 
   AuthStatus _status = AuthStatus.initial;
   AuthStatus get status => _status;
@@ -46,6 +51,8 @@ class AuthProvider extends ChangeNotifier {
     _user = current;
     _status = AuthStatus.authenticated;
     notifyListeners();
+    // Sesi dipulihkan -> pastikan FCM token perangkat ini tersimpan (FR push).
+    _fcmTokenService.registerForUser(current.uid);
     return current.role;
   }
 
@@ -82,8 +89,11 @@ class AuthProvider extends ChangeNotifier {
     return _run(() => _repository.sendPasswordResetEmail(email));
   }
 
-  /// Logout: bersihkan state lalu beri tahu listener (FR-1.4).
+  /// Logout: buang FCM token perangkat ini, bersihkan state, beri tahu listener
+  /// (FR-1.4). Token dihapus SEBELUM signOut karena penghapusan butuh sesi aktif.
   Future<void> signOut() async {
+    final uid = _user?.uid;
+    if (uid != null) await _fcmTokenService.unregisterForUser(uid);
     await _repository.signOut();
     _user = null;
     _setUnauthenticated();
@@ -102,6 +112,8 @@ class AuthProvider extends ChangeNotifier {
       await action();
       _status = AuthStatus.authenticated;
       notifyListeners();
+      // Login/registrasi sukses -> daftarkan FCM token (best-effort).
+      if (_user != null) _fcmTokenService.registerForUser(_user!.uid);
       return true;
     } on AuthFailure catch (failure) {
       _errorMessage = failure.message; // Pesan sudah ramah-pengguna.

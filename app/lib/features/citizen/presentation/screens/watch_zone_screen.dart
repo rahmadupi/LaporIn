@@ -2,27 +2,35 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../core/services/geocoding_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/snackbar_helper.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../reports/domain/repositories/reports_repository.dart';
+import '../../domain/entities/watch_zone.dart';
+import '../../domain/repositories/watch_zone_repository.dart';
 import '../widgets/radius_slider.dart';
 
-/// Atur Watch Zone (C — tab "Watch Zones").
+/// Atur Watch Zone (buat / edit) — TERSIMPAN ke Firestore `watch_zones`.
 ///
-/// Warga memilih pusat zona dengan menggeser peta (pin tetap di tengah layar),
-/// menamai zona, dan menentukan radius pantauan lewat slider. Saat disimpan,
-/// estimasi aktivitas ditampilkan sebagai pratinjau.
+/// Warga memilih pusat zona dengan menggeser peta (pin tetap di tengah),
+/// menamai zona, dan menentukan radius. Pratinjau menampilkan jumlah laporan
+/// aktif NYATA di area (dihitung saat peta berhenti digeser). Saat disimpan,
+/// alamat pusat di-reverse-geocode lalu dokumen dibuat/diperbarui.
 ///
 /// TAHAN-BANTING: GoogleMap tetap dirender walau API key Maps belum dipasang
-/// (tile kosong, tidak crash) — mengikuti pola Step 3 & ReportMiniMap. Data
-/// masih lokal/dummy sesuai cakupan branch citizen; [onClose] dipakai parent
-/// (Main Navigation) untuk kembali ke Beranda dari tombol back/tutup.
+/// (tile kosong, tidak crash). [existing] != null berarti mode edit.
 class WatchZoneScreen extends StatefulWidget {
-  const WatchZoneScreen({super.key, this.onClose});
+  const WatchZoneScreen({super.key, this.onClose, this.existing});
 
   /// Aksi tombol kembali / tutup. Bila null, tombol disembunyikan.
   final VoidCallback? onClose;
+
+  /// Zona yang sedang diedit; null = buat zona baru.
+  final WatchZone? existing;
 
   @override
   State<WatchZoneScreen> createState() => _WatchZoneScreenState();
@@ -35,10 +43,25 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
   static const double _maxRadius = 5000;
 
   final _nameController = TextEditingController();
+  final _geocoder = const GeocodingService();
   GoogleMapController? _mapController;
 
-  LatLng _center = _initialCenter; // Pusat zona = titik kamera saat ini.
-  double _radius = 500; // Radius terpilih (meter); default 500m sesuai mockup.
+  late LatLng _center;
+  late double _radius;
+
+  int? _activeNearby; // Jumlah laporan aktif nyata di area (null = belum dihitung).
+  bool _saving = false;
+
+  bool get _isEdit => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    _center = e != null ? LatLng(e.latitude, e.longitude) : _initialCenter;
+    _radius = e?.radius ?? 500;
+    if (e != null) _nameController.text = e.name;
+  }
 
   @override
   void dispose() {
@@ -47,8 +70,20 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
     super.dispose();
   }
 
-  /// Estimasi laporan/minggu (dummy) — naik seiring luas radius. 500m -> 12.
-  int get _estimatedReports => (_radius / 42).round().clamp(1, 999);
+  /// Hitung laporan aktif nyata dalam radius (dipanggil saat kamera berhenti).
+  Future<void> _refreshNearbyCount() async {
+    try {
+      final reports =
+          await context.read<ReportsRepository>().nearbyActiveReports(
+                latitude: _center.latitude,
+                longitude: _center.longitude,
+                radiusMeters: _radius,
+              );
+      if (mounted) setState(() => _activeNearby = reports.length);
+    } catch (e) {
+      debugPrint('[WatchZone] Gagal menghitung laporan terdekat: $e');
+    }
+  }
 
   /// Pindahkan kamera ke lokasi GPS pengguna; tahan-banting bila izin/GPS gagal.
   Future<void> _goToCurrentLocation() async {
@@ -80,30 +115,68 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
     if (mounted) SnackbarHelper.showError(context, message);
   }
 
-  /// Validasi nama lalu "simpan" (lokal). Pusat & radius sudah tersimpan di state.
-  void _save() {
+  /// Validasi nama lalu simpan ke Firestore (create/update).
+  Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       return SnackbarHelper.showError(context, 'Beri nama zona terlebih dulu.');
     }
+    final uid = context.read<AuthProvider>().user?.uid;
+    if (uid == null || uid.isEmpty) {
+      return SnackbarHelper.showError(context, 'Sesi berakhir, silakan login.');
+    }
     FocusScope.of(context).unfocus();
-    SnackbarHelper.showSuccess(
-      context,
-      'Watch Zone "$name" (${RadiusSlider.formatRadius(_radius)}) disimpan.',
-    );
-    widget.onClose?.call();
+    setState(() => _saving = true);
+
+    final repo = context.read<WatchZoneRepository>();
+    try {
+      // Reverse geocoding pusat zona untuk disimpan sebagai alamat (External API).
+      final address =
+          await _geocoder.resolveAddress(_center.latitude, _center.longitude);
+
+      if (_isEdit) {
+        await repo.update(
+          id: widget.existing!.id,
+          name: name,
+          latitude: _center.latitude,
+          longitude: _center.longitude,
+          radius: _radius,
+          address: address,
+        );
+      } else {
+        await repo.create(
+          userId: uid,
+          name: name,
+          latitude: _center.latitude,
+          longitude: _center.longitude,
+          radius: _radius,
+          address: address,
+        );
+      }
+
+      if (!mounted) return;
+      SnackbarHelper.showSuccess(
+        context,
+        'Watch Zone "$name" (${RadiusSlider.formatRadius(_radius)}) disimpan.',
+      );
+      widget.onClose?.call();
+    } catch (e) {
+      debugPrint('[WatchZone] Gagal menyimpan: $e');
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Gagal menyimpan Watch Zone.');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Sheet putih menempel ke bawah; padding aman dikelola di dalam sheet.
       backgroundColor: AppColors.scaffoldBackground,
       body: Stack(
         children: [
           Positioned.fill(child: _buildMap()),
-          // Pin tetap di tengah area peta (sedikit di atas pusat layar karena
-          // bottom sheet menutup bagian bawah).
           const Positioned.fill(
             child: Align(
               alignment: Alignment(0, -0.22),
@@ -111,8 +184,6 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
             ),
           ),
           _buildTopOverlay(),
-          // Tombol lokasi + bottom sheet ditumpuk dari bawah agar tombol selalu
-          // duduk tepat di atas sheet berapa pun tinggi kontennya.
           Positioned(
             left: 0,
             right: 0,
@@ -134,18 +205,16 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
     );
   }
 
-  /// Peta latar. Pusat zona mengikuti titik kamera (onCameraMove).
+  /// Peta latar. Pusat zona mengikuti kamera; saat berhenti -> hitung laporan.
   Widget _buildMap() {
     return GoogleMap(
-      initialCameraPosition:
-          const CameraPosition(target: _initialCenter, zoom: 14),
+      initialCameraPosition: CameraPosition(target: _center, zoom: 14),
       onMapCreated: (c) => _mapController = c,
       onCameraMove: (pos) => _center = pos.target,
+      onCameraIdle: _refreshNearbyCount,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
-      // Lite mode = render statis ringan; hanya Android (tahan-banting di iOS).
       liteModeEnabled: defaultTargetPlatform == TargetPlatform.android,
-      // Lingkaran radius semi-transparan mengikuti pusat & radius terpilih.
       circles: {
         Circle(
           circleId: const CircleId('watch_zone_radius'),
@@ -159,7 +228,6 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
     );
   }
 
-  /// Bar pencarian mengambang + banner petunjuk geser peta.
   Widget _buildTopOverlay() {
     return Positioned(
       top: 0,
@@ -181,8 +249,6 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
     );
   }
 
-  /// Panel bawah: handle, judul + tutup, nama zona, slider radius, pratinjau,
-  /// dan tombol simpan.
   Widget _buildBottomSheet() {
     return Container(
       width: double.infinity,
@@ -205,7 +271,6 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Drag handle dekoratif.
               Center(
                 child: Container(
                   width: 48,
@@ -217,13 +282,12 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
                   ),
                 ),
               ),
-              // Header: judul + tombol tutup.
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Atur Watch Zone',
-                    style: TextStyle(
+                  Text(
+                    _isEdit ? 'Edit Watch Zone' : 'Atur Watch Zone',
+                    style: const TextStyle(
                       fontSize: 22,
                       height: 30 / 22,
                       fontWeight: FontWeight.w600,
@@ -249,19 +313,31 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
                 min: _minRadius,
                 max: _maxRadius,
                 onChanged: (v) => setState(() => _radius = v),
+                onChangeEnd: (_) => _refreshNearbyCount(),
               ),
               const SizedBox(height: 24),
-              _ActivityPreview(
-                text:
-                    '📊 Diperkirakan $_estimatedReports laporan per minggu di area ini',
-              ),
+              _ActivityPreview(text: _previewText()),
               const SizedBox(height: 24),
-              PrimaryButton(label: 'Simpan Watch Zone', onPressed: _save),
+              PrimaryButton(
+                label: _saving ? 'Menyimpan...' : 'Simpan Watch Zone',
+                onPressed: _saving ? null : _save,
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// Teks pratinjau berbasis data NYATA (bukan estimasi dummy).
+  String _previewText() {
+    if (_activeNearby == null) {
+      return '📊 Menghitung laporan aktif di area ini...';
+    }
+    if (_activeNearby == 0) {
+      return '📊 Belum ada laporan aktif di area ini saat ini';
+    }
+    return '📊 Ada $_activeNearby laporan aktif di area ini';
   }
 
   Widget _buildNameField() {
@@ -278,7 +354,6 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
           textInputAction: TextInputAction.done,
           decoration: InputDecoration(
             hintText: 'Rumah, Kantor, dll',
-            // Override tema (yang putih) agar cocok abu-abu lembut mockup.
             filled: true,
             fillColor: const Color(0xFFF3F4F6),
             contentPadding:
@@ -309,7 +384,6 @@ class _CenterPin extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Bayangan & ikon pin biru primer (mengikuti aksen mockup).
         const Icon(
           Icons.location_on,
           size: 44,
@@ -318,7 +392,6 @@ class _CenterPin extends StatelessWidget {
             Shadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 3)),
           ],
         ),
-        // Titik bayangan kecil di tanah agar pin terasa "menancap".
         Container(
           width: 8,
           height: 4,
@@ -334,8 +407,8 @@ class _CenterPin extends StatelessWidget {
 
 /// Bar pencarian mengambang: tombol kembali + field pencarian lokasi.
 ///
-/// Field bersifat dekoratif (pencarian alamat belum diimplementasikan di branch
-/// ini) — pemilihan pusat zona dilakukan dengan menggeser peta.
+/// Field bersifat dekoratif (pemilihan pusat zona dilakukan dengan menggeser
+/// peta). Tombol kembali memanggil [onBack].
 class _FloatingSearchBar extends StatelessWidget {
   const _FloatingSearchBar({this.onBack});
 
@@ -376,10 +449,11 @@ class _FloatingSearchBar extends StatelessWidget {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.search, size: 18, color: AppColors.textSecondary),
+                  Icon(Icons.place_outlined,
+                      size: 18, color: AppColors.textSecondary),
                   SizedBox(width: 8),
                   Text(
-                    'Cari lokasi atau alamat...',
+                    'Geser peta untuk memilih lokasi',
                     style: TextStyle(
                         fontSize: 14, color: AppColors.textSecondary),
                   ),
@@ -447,7 +521,7 @@ class _CurrentLocationButton extends StatelessWidget {
   }
 }
 
-/// Kartu pratinjau estimasi aktivitas di area zona.
+/// Kartu pratinjau jumlah laporan aktif di area zona (data nyata).
 class _ActivityPreview extends StatelessWidget {
   const _ActivityPreview({required this.text});
 

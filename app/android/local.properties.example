@@ -1,0 +1,14 @@
+# Contoh android/local.properties untuk LaporIn.
+# SALIN file ini menjadi `local.properties` lalu isi nilainya.
+# `local.properties` SUDAH di-gitignore — JANGAN commit key asli.
+#
+# flutter.sdk & sdk.dir biasanya diisi otomatis oleh Flutter/Android Studio.
+# Tambahkan SATU baris berikut dengan Google Maps API key milik Anda:
+
+MAPS_API_KEY=your_actual_maps_api_key_here
+
+# Cara mendapatkan & membatasi key: lihat docs/GOOGLE_MAPS_SETUP.md
+#  - Aktifkan "Maps SDK for Android" (peta) dan "Geocoding API" (alamat).
+#  - Batasi key: Application restriction = Android apps (package name +
+#    SHA-1 debug & release), API restriction = hanya dua API di atas.
+#  - Untuk build release, daftarkan SHA-1 keystore rilis juga.

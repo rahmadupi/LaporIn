@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../domain/entities/app_notification.dart';
 
 /// Satu tile notifikasi: ikon bulat berwarna, judul, isi, waktu, dan indikator
@@ -62,7 +63,7 @@ class NotificationTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    notification.body,
+                    notification.message,
                     style: const TextStyle(
                       fontSize: 12,
                       height: 1.35,
@@ -78,7 +79,7 @@ class NotificationTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  notification.time,
+                  DateFormatter.relative(notification.createdAt),
                   style: const TextStyle(
                       fontSize: 11, color: AppColors.textSecondary),
                 ),

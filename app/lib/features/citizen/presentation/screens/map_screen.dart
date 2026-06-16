@@ -1,55 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../reports/domain/repositories/reports_repository.dart';
+import '../../../reports/presentation/screens/report_detail_screen.dart';
 import '../models/nearby_report.dart';
+import '../providers/nearby_reports_notifier.dart';
 import '../widgets/map_filter_chips.dart';
 import '../widgets/map_report_preview_card.dart';
 
-/// Layar Peta (C — tab "Peta").
+/// Layar Peta (tab "Peta") — marker laporan REAL dari Firestore.
 ///
-/// Menampilkan laporan warga di sekitar sebagai marker berwarna sesuai status,
-/// dengan bar pencarian mengambang, baris chip filter kategori, dan kartu
-/// pratinjau laporan terpilih di bawah. Tap marker memilih laporannya.
-///
-/// TAHAN-BANTING: GoogleMap tetap dirender walau API key Maps belum dipasang
-/// (tile kosong, tidak crash) — mengikuti pola ReportMiniMap & Step 3. Peta ini
-/// interaktif (marker bisa di-tap, peta bisa digeser) sehingga lite mode TIDAK
-/// dipakai agar tap marker tetap berfungsi. Data masih dummy
-/// ([NearbyReport.dummyList]) sesuai cakupan branch citizen.
-///
-/// CATATAN: tidak memuat bottom navigation sendiri — itu disediakan parent
-/// [CitizenMainNavigation].
-class MapScreen extends StatefulWidget {
+/// Menampilkan laporan publik terbaru sebagai marker berwarna sesuai status,
+/// dengan chip filter kategori dan kartu pratinjau laporan terpilih. Tap marker
+/// memilih laporannya; tap kartu membuka Detail. Tidak memuat bottom navigation
+/// sendiri (disediakan parent [CitizenMainNavigation]).
+class MapScreen extends StatelessWidget {
   const MapScreen({super.key});
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (ctx) =>
+          NearbyReportsNotifier(repository: ctx.read<ReportsRepository>()),
+      child: const _MapView(),
+    );
+  }
 }
 
-class _MapScreenState extends State<MapScreen> {
-  // Pusat awal: Sidoarjo, selaras layar Watch Zone & Beranda.
+class _MapView extends StatefulWidget {
+  const _MapView();
+
+  @override
+  State<_MapView> createState() => _MapViewState();
+}
+
+class _MapViewState extends State<_MapView> {
+  // Pusat awal: Sidoarjo (dipakai sebelum data/marker masuk).
   static const LatLng _initialCenter = LatLng(-7.4478, 112.7183);
 
-  static const List<String> _categories = [
-    'Semua',
-    'Jalan',
-    'Lampu',
-    'Sampah',
-    'Drainase',
+  // Label chip -> slug kategori (null = "Semua").
+  static const List<(String, String?)> _filters = [
+    ('Semua', null),
+    ('Jalan', 'road_damage'),
+    ('Lampu', 'street_light'),
+    ('Sampah', 'trash'),
+    ('Drainase', 'drainage'),
   ];
-
-  // Hanya laporan yang punya koordinat yang bisa menjadi marker di peta.
-  final List<NearbyReport> _reports = NearbyReport.dummyList
-      .where((r) => r.location != null)
-      .toList(growable: false);
 
   GoogleMapController? _mapController;
   int _selectedCategory = 0;
-
-  // Laporan yang kartunya sedang tampil. Default laporan pertama agar kartu
-  // pratinjau langsung terlihat saat layar dibuka (selaras desain Figma).
-  late NearbyReport? _selectedReport = _reports.isNotEmpty ? _reports.first : null;
+  String? _selectedReportId;
 
   @override
   void dispose() {
@@ -61,35 +63,53 @@ class _MapScreenState extends State<MapScreen> {
   double _hueFor(Color statusColor) {
     if (statusColor == AppColors.error) return BitmapDescriptor.hueRed;
     if (statusColor == AppColors.success) return BitmapDescriptor.hueGreen;
-    return BitmapDescriptor.hueOrange; // accent / "Diproses"
+    if (statusColor == AppColors.primary) return BitmapDescriptor.hueAzure;
+    return BitmapDescriptor.hueOrange;
   }
 
-  Set<Marker> _buildMarkers() {
-    return _reports.map((report) {
+  List<NearbyReport> _filtered(List<NearbyReport> all) {
+    final slug = _filters[_selectedCategory].$2;
+    final withLocation = all.where((r) => r.location != null);
+    if (slug == null) return withLocation.toList();
+    return withLocation.where((r) => r.categorySlug == slug).toList();
+  }
+
+  Set<Marker> _buildMarkers(List<NearbyReport> reports) {
+    return reports.map((report) {
       return Marker(
-        markerId: MarkerId(report.title),
+        markerId: MarkerId(report.reportId),
         position: report.location!,
         icon: BitmapDescriptor.defaultMarkerWithHue(_hueFor(report.statusColor)),
         infoWindow: InfoWindow(title: report.title, snippet: report.address),
-        onTap: () => setState(() => _selectedReport = report),
+        onTap: () => setState(() => _selectedReportId = report.reportId),
       );
     }).toSet();
   }
 
-  /// Geser kamera ke laporan terpilih lalu tampilkan kartunya.
-  void _focusReport(NearbyReport report) {
-    _mapController?.animateCamera(CameraUpdate.newLatLng(report.location!));
-    setState(() => _selectedReport = report);
+  void _openDetail(String reportId) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReportDetailScreen(reportId: reportId),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final notifier = context.watch<NearbyReportsNotifier>();
+    final reports = _filtered(notifier.items);
+
+    // Laporan terpilih (bila masih ada setelah filter berubah).
+    final selected = reports.where((r) => r.reportId == _selectedReportId);
+    final selectedReport = selected.isNotEmpty
+        ? selected.first
+        : (reports.isNotEmpty ? reports.first : null);
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
       body: Stack(
         children: [
-          Positioned.fill(child: _buildMap()),
-          // Overlay atas: bar pencarian + chip filter.
+          Positioned.fill(child: _buildMap(reports)),
           Positioned(
             top: 0,
             left: 0,
@@ -100,20 +120,27 @@ class _MapScreenState extends State<MapScreen> {
                 children: [
                   const Padding(
                     padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: _SearchBar(),
+                    child: _InfoBar(),
                   ),
                   const SizedBox(height: 12),
                   MapFilterChips(
-                    categories: _categories,
+                    categories: _filters.map((f) => f.$1).toList(),
                     selectedIndex: _selectedCategory,
-                    onSelected: (i) => setState(() => _selectedCategory = i),
+                    onSelected: (i) => setState(() {
+                      _selectedCategory = i;
+                      _selectedReportId = null;
+                    }),
                   ),
                 ],
               ),
             ),
           ),
-          // Kartu pratinjau laporan terpilih, mengambang di atas bottom nav.
-          if (_selectedReport != null)
+          // Status kosong/loading di tengah bila belum ada marker.
+          if (notifier.status == NearbyStatus.loading)
+            const Center(child: CircularProgressIndicator())
+          else if (reports.isEmpty)
+            const _NoReportsHint(),
+          if (selectedReport != null)
             Positioned(
               left: 16,
               right: 16,
@@ -121,8 +148,8 @@ class _MapScreenState extends State<MapScreen> {
               child: SafeArea(
                 top: false,
                 child: MapReportPreviewCard(
-                  report: _selectedReport!,
-                  onTap: () => _focusReport(_selectedReport!),
+                  report: selectedReport,
+                  onTap: () => _openDetail(selectedReport.reportId),
                 ),
               ),
             ),
@@ -131,55 +158,75 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  /// Peta laporan. Tetap dirender walau API key belum ada (tahan-banting).
-  Widget _buildMap() {
+  Widget _buildMap(List<NearbyReport> reports) {
     return GoogleMap(
       initialCameraPosition:
-          const CameraPosition(target: _initialCenter, zoom: 14),
+          const CameraPosition(target: _initialCenter, zoom: 13),
       onMapCreated: (c) => _mapController = c,
-      markers: _buildMarkers(),
+      markers: _buildMarkers(reports),
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
-      // Tap kosong pada peta menutup kartu pratinjau.
-      onTap: (_) => setState(() => _selectedReport = null),
+      onTap: (_) => setState(() => _selectedReportId = null),
     );
   }
 }
 
-/// Bar pencarian mengambang (dekoratif — pencarian alamat belum dibangun di
-/// branch ini).
-class _SearchBar extends StatelessWidget {
-  const _SearchBar();
+/// Bar info ringkas di atas peta (menggantikan search bar dekoratif).
+class _InfoBar extends StatelessWidget {
+  const _InfoBar();
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      textField: true,
-      label: 'Cari lokasi atau alamat',
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1F000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.place_outlined, size: 20, color: AppColors.primary),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Laporan warga di sekitar Anda',
+              style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Petunjuk saat belum ada laporan untuk filter terpilih.
+class _NoReportsHint extends StatelessWidget {
+  const _NoReportsHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: const Alignment(0, 0.3),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x1F000000),
-              blurRadius: 6,
-              offset: Offset(0, 2),
-            ),
+                color: Color(0x1F000000), blurRadius: 6, offset: Offset(0, 2)),
           ],
         ),
-        child: const Row(
-          children: [
-            Icon(Icons.search, size: 20, color: AppColors.textPrimary),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Cari lokasi atau alamat...',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-            ),
-          ],
+        child: const Text(
+          'Belum ada laporan pada kategori ini',
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
       ),
     );

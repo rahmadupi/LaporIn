@@ -4,9 +4,11 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
+import '../../../../core/utils/geo_distance.dart';
 import '../../domain/entities/report.dart';
 import '../../domain/entities/report_category.dart';
 import '../../domain/entities/report_severity.dart';
+import '../../domain/entities/report_status.dart';
 import '../../domain/report_failure.dart';
 import '../../domain/repositories/reports_repository.dart';
 import '../models/report_model.dart';
@@ -101,6 +103,45 @@ class FirebaseReportsRepository implements ReportsRepository {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snap) => snap.docs.map(ReportModel.fromFirestore).toList());
+  }
+
+  @override
+  Stream<List<Report>> watchPublicReports({int limit = 50}) {
+    // Laporan publik terbaru lintas-warga untuk Beranda/Peta. Hanya yang belum
+    // dihapus; dibatasi agar hemat baca. Penyaringan jarak dilakukan di klien.
+    return _firestore
+        .collection('reports')
+        .where('isDeleted', isEqualTo: false)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs.map(ReportModel.fromFirestore).toList());
+  }
+
+  @override
+  Future<List<Report>> nearbyActiveReports({
+    required double latitude,
+    required double longitude,
+    required double radiusMeters,
+    int candidateLimit = 200,
+  }) async {
+    // Ambil kandidat laporan publik terbaru, lalu saring di klien berdasarkan
+    // jarak haversine + status masih aktif (belum selesai/ditolak).
+    final snap = await _firestore
+        .collection('reports')
+        .where('isDeleted', isEqualTo: false)
+        .orderBy('createdAt', descending: true)
+        .limit(candidateLimit)
+        .get();
+
+    return snap.docs.map(ReportModel.fromFirestore).where((r) {
+      if (r.status == ReportStatus.resolved ||
+          r.status == ReportStatus.rejected) {
+        return false;
+      }
+      final d = GeoDistance.meters(latitude, longitude, r.latitude, r.longitude);
+      return d <= radiusMeters;
+    }).toList();
   }
 
   @override

@@ -1,0 +1,45 @@
+{
+  "//": "Index komposit yang dibutuhkan kueri LaporIn (Citizen). Deploy dengan: firebase deploy --only firestore:indexes. Bila lupa, Firestore akan memberi link pembuatan index otomatis di log error.",
+  "indexes": [
+    {
+      "//": "Riwayat laporan milik warga: where(reporterId) + where(isDeleted) + orderBy(createdAt desc).",
+      "collectionGroup": "reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "reporterId", "order": "ASCENDING" },
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Laporan publik terbaru untuk Beranda/Peta: where(isDeleted) + orderBy(createdAt desc).",
+      "collectionGroup": "reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Notifikasi pengguna: where(userId) + where(isDeleted) + orderBy(createdAt desc).",
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Watch zones pengguna: where(userId) + where(isDeleted) + orderBy(createdAt desc).",
+      "collectionGroup": "watch_zones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
