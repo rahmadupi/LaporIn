@@ -2,12 +2,20 @@
 
 Sebuah aplikasi untuk mengakomodasi dan menampung laporan keresahan pada infrastruktur publik
 
+# DEV TEAM
+
+Team Member
+
+# TECH STACK
+
+Tech Stack
+
 # CLASS DIAGRAM
 
 ![Class Diagram](./SRS/LaporIn_class_diagram.jpg "Class Diagram")
 
 # PROJECT STRUCTURE
 
-# DEV SETUP
+# DEVELOPMENT SETUP GUIDE
 
 # DEMO

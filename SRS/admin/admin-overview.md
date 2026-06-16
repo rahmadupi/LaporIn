@@ -69,3 +69,5 @@
 - **Admin Profile:**:
   - Halaman profil admin dengan informasi pribadi dan opsi untuk mengubah password.
   - Fitur untuk mengelola preferensi notifikasi dan pengaturan akun.
+
+### Admin Rule
