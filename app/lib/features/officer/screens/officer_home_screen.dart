@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'officer_task_detail_screen.dart'; 
 import 'officer_history_screen.dart';
 import 'officer_profile_screen.dart';
+import 'officer_map_screen.dart';
+import 'package:geolocator/geolocator.dart';
 
 class OfficerHomeScreen extends StatefulWidget {
   const OfficerHomeScreen({Key? key}) : super(key: key);
@@ -22,20 +24,20 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     "Mendesak"
   ];
 
-  Widget _buildBodyContent() {
-    switch (_selectedBottomNavIndex) {
-      case 0:
-        return _buildActiveTasksView(); 
-      case 1:
-        return _buildActiveTasksView(); // Nanti diganti dengan Maps Izzud
-      case 2:
-        return const OfficerHistoryScreen(); 
-      case 3:
-        return const OfficerProfileScreen(); 
-      default:
-        return _buildActiveTasksView();
-    }
+ Widget _buildBodyContent() {
+  switch (_selectedBottomNavIndex) {
+    case 0:
+      return _buildActiveTasksView(); 
+    case 1:
+      return const OfficerMapScreen(); // <-- INI YANG DIUBAH
+    case 2:
+      return const OfficerHistoryScreen(); 
+    case 3:
+      return const OfficerProfileScreen(); 
+    default:
+      return _buildActiveTasksView();
   }
+}
 
   void _onItemTapped(int index) {
     setState(() {
@@ -44,63 +46,108 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
   }
 
   // === FITUR CREATE: FUNGSI MEMBUAT LAPORAN DARURAT (UNTUK NILAI CRUD) ===
+  // === FITUR CREATE: FUNGSI MEMBUAT LAPORAN DARURAT (DENGAN SENSOR GPS) ===
   void _showCreateEmergencyDialog() {
     final titleController = TextEditingController();
     final locationController = TextEditingController();
+    bool isLoading = false; // State untuk animasi loading saat cari GPS
 
     showDialog(
       context: context,
+      barrierDismissible: false, // Jangan tutup dialog kalau ditekan di luar
       builder: (context) {
-        return AlertDialog(
-          title: const Text("Buat Laporan Darurat", style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: "Judul Masalah (Misal: Tiang Roboh)"),
+        return StatefulBuilder( // Butuh StatefulBuilder agar dialog bisa update state loading
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text("Buat Laporan Darurat", style: TextStyle(fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(labelText: "Judul Masalah (Misal: Tiang Roboh)"),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: locationController,
+                    decoration: const InputDecoration(labelText: "Detail Lokasi"),
+                  ),
+                  if (isLoading) ...[
+                    const SizedBox(height: 16),
+                    const LinearProgressIndicator(),
+                    const SizedBox(height: 8),
+                    const Text("Mencari titik koordinat GPS...", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ]
+                ],
               ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: locationController,
-                decoration: const InputDecoration(labelText: "Lokasi Detail"),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Batal"),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700]),
-              onPressed: () async {
-                if (titleController.text.isNotEmpty && locationController.text.isNotEmpty) {
-                  // Tembak data baru ke Firestore (CREATE)
-                  await FirebaseFirestore.instance.collection('assignments').add({
-                    'title': titleController.text,
-                    'location': locationController.text,
-                    'urgency': 'Mendesak', // Set otomatis mendesak
-                    'status': 'Belum Dimulai',
-                    'description': 'Laporan darurat dibuat langsung oleh relawan di lapangan.',
-                    'created_at': FieldValue.serverTimestamp(),
-                  });
-                  if (mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Berhasil membuat laporan darurat!"), backgroundColor: Colors.green),
-                    );
-                  }
-                }
-              },
-              child: const Text("Kirim", style: TextStyle(color: Colors.white)),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(context),
+                  child: const Text("Batal"),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700]),
+                  onPressed: isLoading ? null : () async {
+                    if (titleController.text.isNotEmpty && locationController.text.isNotEmpty) {
+                      setState(() { isLoading = true; }); // Nyalakan loading
+
+                      try {
+                        // 1. Cek izin GPS
+                        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+                        if (!serviceEnabled) {
+                          throw Exception("GPS HP Anda mati. Nyalakan terlebih dahulu.");
+                        }
+
+                        LocationPermission permission = await Geolocator.checkPermission();
+                        if (permission == LocationPermission.denied) {
+                          permission = await Geolocator.requestPermission();
+                          if (permission == LocationPermission.denied) {
+                            throw Exception("Izin lokasi ditolak.");
+                          }
+                        }
+                        
+                        if (permission == LocationPermission.deniedForever) {
+                          throw Exception("Izin lokasi diblokir permanen oleh sistem.");
+                        }
+
+                        // 2. Tarik Koordinat saat ini!
+                        Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+
+                        // 3. Tembak data baru ke Firestore BESERTA Koordinat
+                        await FirebaseFirestore.instance.collection('assignments').add({
+                          'title': titleController.text,
+                          'location': locationController.text,
+                          'latitude': position.latitude,   // Data GPS asli
+                          'longitude': position.longitude, // Data GPS asli
+                          'urgency': 'Mendesak',
+                          'status': 'Belum Dimulai',
+                          'description': 'Laporan darurat dibuat langsung oleh relawan di lapangan.',
+                          'created_at': FieldValue.serverTimestamp(),
+                        });
+
+                        if (mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Berhasil membuat laporan dengan lokasi GPS akurat!"), backgroundColor: Colors.green),
+                          );
+                        }
+                      } catch (e) {
+                        setState(() { isLoading = false; }); // Matikan loading jika gagal
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Gagal: ${e.toString()}"), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text("Kirim & Lacak GPS", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
         );
       },
     );
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -146,34 +193,57 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     );
   }
 
+  // === FITUR DINAMIS: PROFIL DI HEADER APP BAR ===
   AppBar _buildOfficerAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
       toolbarHeight: 72,
       elevation: 0,
-      title: Row(
-        children: [
-          const CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.blueAccent,
-            child: Icon(Icons.person, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      title: FutureBuilder<DocumentSnapshot>(
+        // Mengambil data dari koleksi 'users', dokumen 'User1'
+        future: FirebaseFirestore.instance.collection('users').doc('User1').get(),
+        builder: (context, snapshot) {
+          String name = "Memuat...";
+          String role = "Mencari data...";
+
+          if (snapshot.hasData && snapshot.data!.exists) {
+            var userData = snapshot.data!.data() as Map<String, dynamic>;
+            name = userData['name'] ?? 'Nama Tidak Diketahui';
+            role = userData['role'] ?? '-';
+          } else if (snapshot.hasError) {
+            name = "Error";
+            role = "Gagal memuat data";
+          }
+
+          return Row(
             children: [
-              const Text("Pak Yusuf", 
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black)),
-              Text("Mitra Relawan - Sidoarjo", 
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              const CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.blueAccent,
+                child: Icon(Icons.person, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, 
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black)),
+                  Text(role, 
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                ],
+              ),
             ],
-          ),
-        ],
+          );
+        },
       ),
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications, color: Colors.black),
-          onPressed: () {},
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Halaman Riwayat Notifikasi Belum Dibuat')),
+            );
+          },
         ),
       ],
     );
