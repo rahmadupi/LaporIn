@@ -91,21 +91,16 @@ Dokumen ini berisi spesifikasi perancangan data dan integrasi Cloud Firestore / 
   * `title` (String)
   * `location` (String)
   * `status` (String)
-  * `completed_at` (Timestamp)
-  * `completion_notes` (String) — *menampilkan catatan penyelesaian*
-  * `photo_before_url` (String) — *menampilkan thumbnail foto sebelum*
-  * `photo_after_url` (String) — *menampilkan thumbnail foto sesudah*
 
 ---
 
 ### 7. `officer_profile_screen.dart`
-* **Fitur:** Detail Informasi Biodata Akun Petugas
+* **Fitur:** Detail Informasi Biodata Akun Petugas & Statistik Kinerja
 * **Layanan Firebase:** Cloud Firestore
 * **Koleksi / Path:** `users/User1`
 * **Tipe Aksi:** `Read (Get)`
 * **Daftar Field yang Digunakan:**
   * `name` (String)
   * `role` (String)
-  * `division` (String)
-  * `work_region` (String)
-  * `profile_image` (String)
+  * `completed_tasks` (Number/String) — *untuk menampilkan statistik tugas selesai*
+  * `rating` (Number/String) — *untuk menampilkan statistik rating bintang relawan*
