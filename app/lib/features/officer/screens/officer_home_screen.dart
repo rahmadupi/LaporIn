@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 import 'officer_task_detail_screen.dart'; 
 import 'officer_history_screen.dart';
 import 'officer_profile_screen.dart';
 import 'officer_map_screen.dart';
-import 'package:geolocator/geolocator.dart';
 
 class OfficerHomeScreen extends StatefulWidget {
   const OfficerHomeScreen({Key? key}) : super(key: key);
@@ -24,20 +24,20 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     "Mendesak"
   ];
 
- Widget _buildBodyContent() {
-  switch (_selectedBottomNavIndex) {
-    case 0:
-      return _buildActiveTasksView(); 
-    case 1:
-      return const OfficerMapScreen(); // <-- INI YANG DIUBAH
-    case 2:
-      return const OfficerHistoryScreen(); 
-    case 3:
-      return const OfficerProfileScreen(); 
-    default:
-      return _buildActiveTasksView();
+  Widget _buildBodyContent() {
+    switch (_selectedBottomNavIndex) {
+      case 0:
+        return _buildActiveTasksView(); 
+      case 1:
+        return const OfficerMapScreen(); 
+      case 2:
+        return const OfficerHistoryScreen(); 
+      case 3:
+        return const OfficerProfileScreen(); 
+      default:
+        return _buildActiveTasksView();
+    }
   }
-}
 
   void _onItemTapped(int index) {
     setState(() {
@@ -45,18 +45,17 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     });
   }
 
-  // === FITUR CREATE: FUNGSI MEMBUAT LAPORAN DARURAT (UNTUK NILAI CRUD) ===
   // === FITUR CREATE: FUNGSI MEMBUAT LAPORAN DARURAT (DENGAN SENSOR GPS) ===
   void _showCreateEmergencyDialog() {
     final titleController = TextEditingController();
     final locationController = TextEditingController();
-    bool isLoading = false; // State untuk animasi loading saat cari GPS
+    bool isLoading = false; 
 
     showDialog(
       context: context,
-      barrierDismissible: false, // Jangan tutup dialog kalau ditekan di luar
+      barrierDismissible: false, 
       builder: (context) {
-        return StatefulBuilder( // Butuh StatefulBuilder agar dialog bisa update state loading
+        return StatefulBuilder( 
           builder: (context, setState) {
             return AlertDialog(
               title: const Text("Buat Laporan Darurat", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -89,10 +88,9 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700]),
                   onPressed: isLoading ? null : () async {
                     if (titleController.text.isNotEmpty && locationController.text.isNotEmpty) {
-                      setState(() { isLoading = true; }); // Nyalakan loading
+                      setState(() { isLoading = true; }); 
 
                       try {
-                        // 1. Cek izin GPS
                         bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
                         if (!serviceEnabled) {
                           throw Exception("GPS HP Anda mati. Nyalakan terlebih dahulu.");
@@ -110,15 +108,13 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
                           throw Exception("Izin lokasi diblokir permanen oleh sistem.");
                         }
 
-                        // 2. Tarik Koordinat saat ini!
                         Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
 
-                        // 3. Tembak data baru ke Firestore BESERTA Koordinat
                         await FirebaseFirestore.instance.collection('assignments').add({
                           'title': titleController.text,
                           'location': locationController.text,
-                          'latitude': position.latitude,   // Data GPS asli
-                          'longitude': position.longitude, // Data GPS asli
+                          'latitude': position.latitude,   
+                          'longitude': position.longitude, 
                           'urgency': 'Mendesak',
                           'status': 'Belum Dimulai',
                           'description': 'Laporan darurat dibuat langsung oleh relawan di lapangan.',
@@ -132,7 +128,7 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
                           );
                         }
                       } catch (e) {
-                        setState(() { isLoading = false; }); // Matikan loading jika gagal
+                        setState(() { isLoading = false; }); 
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text("Gagal: ${e.toString()}"), backgroundColor: Colors.red),
                         );
@@ -148,13 +144,13 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
       },
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: _selectedBottomNavIndex == 0 ? _buildOfficerAppBar() : null, 
       body: _buildBodyContent(), 
-      // === FITUR CREATE: TOMBOL FAB (UNTUK NILAI CRUD) ===
       floatingActionButton: _selectedBottomNavIndex == 0
           ? FloatingActionButton.extended(
               onPressed: _showCreateEmergencyDialog,
@@ -193,14 +189,13 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     );
   }
 
-  // === FITUR DINAMIS: PROFIL DI HEADER APP BAR ===
+  // === FITUR DINAMIS: PROFIL DI HEADER APP BAR + LOGIKA NOTIFIKASI POP-UP ===
   AppBar _buildOfficerAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
       toolbarHeight: 72,
       elevation: 0,
       title: FutureBuilder<DocumentSnapshot>(
-        // Mengambil data dari koleksi 'users', dokumen 'User1'
         future: FirebaseFirestore.instance.collection('users').doc('User1').get(),
         builder: (context, snapshot) {
           String name = "Memuat...";
@@ -237,11 +232,79 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
         },
       ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications, color: Colors.black),
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Halaman Riwayat Notifikasi Belum Dibuat')),
+        // Real-Time StreamBuilder untuk mengamati Tugas Baru (Belum Dimulai)
+        StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('assignments')
+              .where('status', isEqualTo: 'Belum Dimulai')
+              .snapshots(),
+          builder: (context, snapshot) {
+            bool hasNewTasks = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+            int count = hasNewTasks ? snapshot.data!.docs.length : 0;
+
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications, color: Colors.black),
+                  onPressed: () {
+                    if (!hasNewTasks) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Tidak ada tugas baru saat ini.')),
+                      );
+                      return;
+                    }
+
+                    // Menampilkan Pop-Up Dialog berupa ringkasan daftar tugas baru masuk
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: Text("Tugas Baru Masuk ($count)", style: const TextStyle(fontWeight: FontWeight.bold)),
+                          content: SizedBox(
+                            width: double.maxFinite,
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: snapshot.data!.docs.length,
+                              itemBuilder: (context, index) {
+                                var taskData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                                return ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const Icon(Icons.assignment_late, color: Colors.red),
+                                  title: Text(taskData['title'] ?? 'Tanpa Judul', style: const TextStyle(fontWeight: FontWeight.w500)),
+                                  subtitle: Text(taskData['location'] ?? 'Lokasi tidak spesifik', maxLines: 1, overflow: TextOverflow.ellipsis),
+                                );
+                              },
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text("Tutup"),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
+                // Titik Merah (Notification Badge) jika ada data berstatus 'Belum Dimulai'
+                if (hasNewTasks)
+                  Positioned(
+                    right: 12,
+                    top: 14,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 10,
+                        minHeight: 10,
+                      ),
+                    ),
+                  ),
+              ],
             );
           },
         ),
@@ -319,7 +382,6 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
 
   Widget _buildRealTaskList() {
     return StreamBuilder<QuerySnapshot>(
-      // Hanya menampilkan tugas yang statusnya bukan Selesai
       stream: FirebaseFirestore.instance.collection('assignments')
           .where('status', isNotEqualTo: 'Selesai')
           .snapshots(),
@@ -387,7 +449,6 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
       urgencyText = "🟡 SEDANG";
     }
 
-    // === FITUR DELETE: BUNGKUS DENGAN DISMISSIBLE (UNTUK NILAI CRUD) ===
     return Dismissible(
       key: Key(id),
       direction: DismissDirection.endToStart,
@@ -423,7 +484,6 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
         );
       },
       onDismissed: (direction) async {
-        // Tembak perintah hapus ke Firestore (DELETE)
         await FirebaseFirestore.instance.collection('assignments').doc(id).delete();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
