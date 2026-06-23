@@ -70,38 +70,8 @@ class OfficerProfileScreen extends StatelessWidget {
                 _buildStatCard(completedTasks, rating),
                 
                 const SizedBox(height: 32),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.settings, color: Colors.blue),
-                  ),
-                  title: const Text("Pengaturan Akun"),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    // Pesan sementara karena screen belum dibuat
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Fitur Pengaturan Akun akan segera hadir!')),
-                    );
-                  },
-                ),
-                const Divider(),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(8)),
-                    child: Icon(Icons.help_outline, color: Colors.orange[700]),
-                  ),
-                  title: const Text("Pusat Bantuan"),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    // Pesan sementara karena screen belum dibuat
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Pusat Bantuan belum tersedia')),
-                    );
-                  },
-                ),
-                const Divider(),
+                
+                // HANYA MENYISAKAN FITUR KELUAR APLIKASI
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),

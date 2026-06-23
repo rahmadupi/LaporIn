@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
+import 'dart:io'; // TAMBAHAN: Untuk mengabaikan error sertifikat SSL
 import 'package:hive_flutter/hive_flutter.dart'; 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart'; // Mesin Notifikasi
 import 'firebase_options.dart'; 
 import 'features/officer/screens/officer_login_screen.dart';
+
+// TAMBAHAN: Class sakti untuk bypass verifikasi SSL (menangani error CERTIFICATE_VERIFY_FAILED dari ImgBB)
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+  }
+}
 
 // Fungsi untuk menangani notifikasi saat aplikasi ditutup (Background)
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -13,6 +23,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // TAMBAHAN: Pasang override HTTP di sini sebelum aplikasi memuat koneksi internet apa pun
+  HttpOverrides.global = MyHttpOverrides();
 
   // 1. Nyalakan Mesin Firebase Cloud
   await Firebase.initializeApp(

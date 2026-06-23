@@ -51,7 +51,7 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
             const SizedBox(height: 20),
             _buildTaskDetails(),
             const SizedBox(height: 24),
-            _buildNavigationButton(),
+            // Tombol Navigasi Maps dihapus. UI berhenti di detail tugas.
           ],
         ),
       ),
@@ -164,27 +164,6 @@ class _OfficerTaskDetailScreenState extends State<OfficerTaskDetailScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildNavigationButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: OutlinedButton.icon(
-        icon: const Icon(Icons.explore),
-        label: const Text("🧭 Buka Navigasi (Google Maps)"),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.blue[700],
-          side: BorderSide(color: Colors.blue[700]!),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Membuka Google Maps... (Handoff via Geo URI)")),
-          );
-        },
-      ),
     );
   }
 
