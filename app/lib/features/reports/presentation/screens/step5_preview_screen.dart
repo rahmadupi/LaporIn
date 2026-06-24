@@ -59,8 +59,23 @@ class Step5PreviewScreen extends StatelessWidget {
           if (photo != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.file(photo, height: 180,
-                  width: double.infinity, fit: BoxFit.cover),
+              child: Image.file(
+                photo,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                // Bila berkas gagal di-decode (mis. URI tak valid), tampilkan
+                // placeholder informatif alih-alih kotak hitam.
+                errorBuilder: (_, _, _) => Container(
+                  height: 180,
+                  width: double.infinity,
+                  color: AppColors.border,
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.broken_image_outlined,
+                      size: 40, color: AppColors.textSecondary),
+                ),
+              ),
             ),
           const SizedBox(height: 16),
           _PreviewRow(

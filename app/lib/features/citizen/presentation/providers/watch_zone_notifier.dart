@@ -34,6 +34,16 @@ class WatchZoneNotifier extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  /// Coba muat ulang setelah error. Stream Firestore berakhir saat onError,
+  /// jadi retry HARUS membuka langganan baru (bukan sekadar mengubah state).
+  void retry() {
+    _subscription?.cancel();
+    _status = WatchZoneStatus.loading;
+    _error = null;
+    notifyListeners();
+    _subscribe();
+  }
+
   void _subscribe() {
     _subscription = _repository.watchUserZones(_userId).listen(
       (list) {

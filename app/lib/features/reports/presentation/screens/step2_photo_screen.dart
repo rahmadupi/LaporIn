@@ -77,7 +77,12 @@ class _Step2PhotoScreenState extends State<Step2PhotoScreen> {
               clipBehavior: Clip.antiAlias,
               child: photo == null
                   ? const _PhotoPlaceholder()
-                  : Image.file(photo, fit: BoxFit.cover),
+                  : Image.file(
+                      photo,
+                      fit: BoxFit.cover,
+                      gaplessPlayback: true,
+                      errorBuilder: (_, _, _) => const _PhotoError(),
+                    ),
             ),
           ),
           const SizedBox(height: 16),
@@ -111,6 +116,27 @@ class _Step2PhotoScreenState extends State<Step2PhotoScreen> {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Fallback bila foto terpilih gagal di-decode (hindari kotak hitam).
+class _PhotoError extends StatelessWidget {
+  const _PhotoError();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.broken_image_outlined,
+              size: 48, color: AppColors.textSecondary),
+          SizedBox(height: 12),
+          Text('Foto gagal dimuat. Ambil ulang.',
+              style: TextStyle(color: AppColors.textSecondary)),
         ],
       ),
     );

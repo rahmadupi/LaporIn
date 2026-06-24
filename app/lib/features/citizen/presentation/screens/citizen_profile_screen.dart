@@ -28,6 +28,17 @@ class CitizenProfileScreen extends StatelessWidget {
         : 'Warga';
     final email = auth.user?.email.trim() ?? '';
 
+    // Parent [CitizenMainNavigation] memakai `extendBody: true`, jadi body ini
+    // memanjang DI BALIK BottomAppBar (tinggi 64) + FAB tengah yang menonjol
+    // (~32px di atas bar) + inset navigasi sistem Android. Tanpa ruang bawah,
+    // baris "Keluar" tertutup. Padding dinamis berikut menjaga seluruh konten
+    // tetap terlihat & dapat di-tap di berbagai tinggi layar; ListView tetap
+    // bisa di-scroll bila layar terlalu pendek.
+    const navBarHeight = 64.0;
+    const fabOverhang = 32.0;
+    final safeBottom = MediaQuery.viewPaddingOf(context).bottom;
+    final bottomPadding = navBarHeight + fabOverhang + safeBottom + 16;
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
@@ -53,7 +64,7 @@ class CitizenProfileScreen extends StatelessWidget {
           automaticallyImplyLeading: false,
         ),
         body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPadding),
           children: [
             ProfileHeaderWidget(name: name, email: email),
             const SizedBox(height: 20),

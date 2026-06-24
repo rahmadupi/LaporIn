@@ -8,9 +8,29 @@ class ReportFailure implements Exception {
 
   final String message;
 
-  /// Gagal saat mengunggah foto ke Firebase Storage.
+  /// Gagal saat mengunggah foto ke Firebase Storage (penyebab jaringan/umum).
   factory ReportFailure.photoUpload() => const ReportFailure(
         'Gagal mengunggah foto. Periksa koneksi lalu coba lagi.',
+      );
+
+  /// Foto tidak valid / tidak dapat dibaca dari penyimpanan perangkat.
+  factory ReportFailure.photoInvalid() => const ReportFailure(
+        'Foto tidak valid. Ambil atau pilih ulang foto.',
+      );
+
+  /// Ukuran foto melebihi batas yang diizinkan (10 MB).
+  factory ReportFailure.photoTooLarge() => const ReportFailure(
+        'Ukuran foto terlalu besar (maks 10 MB). Coba foto lain.',
+      );
+
+  /// Tidak punya izin mengunggah (sesi habis / aturan Storage menolak).
+  factory ReportFailure.unauthorized() => const ReportFailure(
+        'Sesi tidak sah untuk mengunggah. Silakan login ulang.',
+      );
+
+  /// Kegagalan jaringan saat menghubungi server.
+  factory ReportFailure.network() => const ReportFailure(
+        'Koneksi bermasalah. Periksa internet lalu coba lagi.',
       );
 
   /// Gagal saat menyimpan dokumen laporan ke Firestore.

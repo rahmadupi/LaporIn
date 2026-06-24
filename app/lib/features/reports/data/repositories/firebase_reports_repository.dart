@@ -3,8 +3,10 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../../core/utils/geo_distance.dart';
+import '../../../../core/utils/recency_sort.dart';
 import '../../domain/entities/report.dart';
 import '../../domain/entities/report_category.dart';
 import '../../domain/entities/report_severity.dart';
@@ -44,6 +46,16 @@ class FirebaseReportsRepository implements ReportsRepository {
     final reportId = _generateReportId();
     final photoRef = _storage.ref('reports/$reportId/photo.jpg');
 
+    // ── Validasi berkas lokal sebelum upload ──────────────────────────────
+    // Cegah error membingungkan: pastikan file benar-benar ada & tidak melebihi
+    // batas Storage (10 MB) sehingga pesan yang muncul tepat sasaran.
+    if (!await photo.exists()) {
+      throw ReportFailure.photoInvalid();
+    }
+    final length = await photo.length();
+    if (length <= 0) throw ReportFailure.photoInvalid();
+    if (length >= 10 * 1024 * 1024) throw ReportFailure.photoTooLarge();
+
     // ── Tahap 1: Upload foto ke Storage ───────────────────────────────────
     // Dilakukan duluan karena URL hasil upload harus ikut masuk ke dokumen
     // Firestore. Jika tahap ini gagal, belum ada apa pun yang perlu dibersihkan.
@@ -54,7 +66,15 @@ class FirebaseReportsRepository implements ReportsRepository {
         SettableMetadata(contentType: 'image/jpeg'),
       );
       photoUrl = await task.ref.getDownloadURL();
-    } catch (_) {
+    } on FirebaseException catch (e) {
+      // Log diagnostik HANYA di debug (tanpa token/PII) agar penyebab nyata
+      // terlihat saat pengembangan, lalu petakan ke pesan spesifik.
+      if (kDebugMode) {
+        debugPrint('[Report] Upload foto gagal: code=${e.code} msg=${e.message}');
+      }
+      throw _mapStorageError(e);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Report] Upload foto gagal (non-Firebase): $e');
       throw ReportFailure.photoUpload();
     }
 
@@ -78,13 +98,31 @@ class FirebaseReportsRepository implements ReportsRepository {
               severity: severity,
             ),
           );
-    } catch (_) {
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Report] Tulis Firestore gagal: $e');
       // Rollback parsial: buang foto yang sudah terlanjur ter-upload.
       await photoRef.delete().catchError((_) {});
       throw ReportFailure.firestoreWrite();
     }
 
     return reportId;
+  }
+
+  /// Petakan kode error Firebase Storage ke [ReportFailure] yang spesifik,
+  /// sehingga pengguna melihat pesan tepat (bukan selalu "Gagal mengunggah").
+  ReportFailure _mapStorageError(FirebaseException e) {
+    switch (e.code) {
+      case 'unauthorized':
+      case 'unauthenticated':
+        return ReportFailure.unauthorized();
+      case 'retry-limit-exceeded':
+      case 'canceled':
+        return ReportFailure.network();
+      case 'object-not-found':
+        return ReportFailure.photoInvalid();
+      default:
+        return ReportFailure.photoUpload();
+    }
   }
 
   @override
@@ -96,26 +134,34 @@ class FirebaseReportsRepository implements ReportsRepository {
     // .snapshots() membuka listener real-time: tiap dokumen yang cocok berubah
     // di server (mis. Admin mengubah status), stream langsung memancarkan list
     // baru tanpa perlu refresh manual.
+    //
+    // Catatan index: dua filter kesetaraan (reporterId + isDeleted) TANPA
+    // orderBy tidak butuh composite index — diurutkan di klien. Ini mencegah
+    // "Gagal memuat riwayat" saat composite index belum di-deploy.
     return _firestore
         .collection('reports')
         .where('reporterId', isEqualTo: reporterId)
         .where('isDeleted', isEqualTo: false)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map(ReportModel.fromFirestore).toList());
+        .map((snap) => _sortedByCreatedAtDesc(
+            snap.docs.map(ReportModel.fromFirestore).toList()));
   }
 
   @override
   Stream<List<Report>> watchPublicReports({int limit = 50}) {
     // Laporan publik terbaru lintas-warga untuk Beranda/Peta. Hanya yang belum
     // dihapus; dibatasi agar hemat baca. Penyaringan jarak dilakukan di klien.
+    // Tanpa orderBy server-side (menghindari composite index isDeleted+createdAt
+    // yang mungkin belum di-deploy). `.limit` membatasi baca; recency dipulihkan
+    // dengan mengurutkan di klien. Untuk skala kecil aplikasi ini, hasil praktis
+    // sama dengan "terbaru dulu".
     return _firestore
         .collection('reports')
         .where('isDeleted', isEqualTo: false)
-        .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snap) => snap.docs.map(ReportModel.fromFirestore).toList());
+        .map((snap) => _sortedByCreatedAtDesc(
+            snap.docs.map(ReportModel.fromFirestore).toList()));
   }
 
   @override
@@ -130,11 +176,12 @@ class FirebaseReportsRepository implements ReportsRepository {
     final snap = await _firestore
         .collection('reports')
         .where('isDeleted', isEqualTo: false)
-        .orderBy('createdAt', descending: true)
         .limit(candidateLimit)
         .get();
 
-    return snap.docs.map(ReportModel.fromFirestore).where((r) {
+    return _sortedByCreatedAtDesc(snap.docs.map(ReportModel.fromFirestore)
+        .toList())
+        .where((r) {
       if (r.status == ReportStatus.resolved ||
           r.status == ReportStatus.rejected) {
         return false;
@@ -229,6 +276,14 @@ class FirebaseReportsRepository implements ReportsRepository {
     } catch (_) {
       throw ReportFailure.saveFailed();
     }
+  }
+
+  /// Urutkan laporan terbaru di atas; createdAt null (pending server-timestamp)
+  /// dianggap paling baru. Dipakai sebagai pengganti orderBy server-side agar
+  /// kueri tidak bergantung pada composite index Firestore.
+  static List<Report> _sortedByCreatedAtDesc(List<Report> reports) {
+    reports.sort((a, b) => compareByDateDesc(a.createdAt, b.createdAt));
+    return reports;
   }
 
   /// Membuat nomor tiket format `LPR-YYYY-NNNNNNN` (skema 8.2).

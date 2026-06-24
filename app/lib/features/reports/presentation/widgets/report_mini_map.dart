@@ -35,6 +35,7 @@ class ReportMiniMap extends StatelessWidget {
         height: 160,
         child: GoogleMap(
           initialCameraPosition: CameraPosition(target: target, zoom: 16),
+          mapType: MapType.normal,
           markers: {
             Marker(
               markerId: const MarkerId('report_pin'),

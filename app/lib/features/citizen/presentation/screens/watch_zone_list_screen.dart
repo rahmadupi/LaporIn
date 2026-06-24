@@ -86,6 +86,7 @@ class _ZoneListBody extends StatelessWidget {
           title: 'Gagal memuat',
           subtitle: notifier.error ?? 'Coba lagi nanti.',
           onAdd: () => WatchZoneListScreen._openEditor(context),
+          onRetry: notifier.retry,
         );
       case WatchZoneStatus.loaded:
         if (notifier.isEmpty) {
@@ -198,11 +199,15 @@ class _EmptyState extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onAdd,
+    this.onRetry,
   });
 
   final String title;
   final String subtitle;
   final VoidCallback onAdd;
+
+  /// Bila diisi (state error), tampilkan tombol "Coba Lagi" yang memuat ulang.
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -238,6 +243,14 @@ class _EmptyState extends StatelessWidget {
               style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
+            if (onRetry != null) ...[
+              OutlinedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Coba Lagi'),
+              ),
+              const SizedBox(height: 12),
+            ],
             PrimaryButton(label: 'Tambah Watch Zone', onPressed: onAdd),
           ],
         ),

@@ -1,139 +1,100 @@
 rules_version = '2';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LaporIn — Aturan keamanan Cloud Firestore (sisi Citizen).
-//
-// Prinsip umum:
-//   * Semua akses WAJIB terautentikasi (request.auth != null).
-//   * Warga hanya boleh menyentuh datanya sendiri (kepemilikan dicek via
-//     request.auth.uid).
-//   * Hapus = SOFT DELETE (set isDeleted=true); dokumen tidak pernah benar-benar
-//     dihapus agar jejak audit tetap utuh (mendukung SDG 16 — transparansi).
-//
-// Cara deploy: lihat docs/FIREBASE_SETUP.md (firebase deploy --only firestore:rules).
-// ─────────────────────────────────────────────────────────────────────────────
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper: apakah ada user yang login.
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Helper: apakah uid yang diminta sama dengan uid pemilik sesi.
-    function isOwner(uid) {
-      return isSignedIn() && request.auth.uid == uid;
+    function uid() {
+      return request.auth.uid;
     }
 
-    // ── users/{uid} ──────────────────────────────────────────────────────────
-    // Profil warga + daftar fcmTokens untuk push notification.
-    // Warga hanya boleh membaca & menulis dokumennya SENDIRI (id dokumen == uid).
-    match /users/{uid} {
-      allow read: if isOwner(uid);
+    // ================= USERS =================
+    match /users/{uidDoc} {
 
-      // Saat membuat profil, role wajib ada dan email harus cocok dengan akun
-      // Auth yang sedang login (mencegah pemalsuan identitas).
-      allow create: if isOwner(uid)
-        && request.resource.data.role is string
-        && request.resource.data.email == request.auth.token.email;
+      allow read: if isSignedIn() && uid() == uidDoc;
 
-      // Update profil/fcmTokens/lastLoginAt oleh pemilik. role tidak boleh
-      // dinaikkan sendiri oleh client (hanya backend/Cloud Function via Admin SDK
-      // yang melewati rules) — jadi nilai role harus tetap sama seperti tersimpan.
-      allow update: if isOwner(uid)
-        && request.resource.data.role == resource.data.role;
+      allow create: if isSignedIn()
+        && uid() == uidDoc
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == "citizen";
 
-      // Profil tidak boleh dihapus dari client.
+      allow update: if isSignedIn()
+        && uid() == uidDoc
+        && resource.data.role == request.resource.data.role;
+
       allow delete: if false;
     }
 
-    // ── reports/{reportId} ───────────────────────────────────────────────────
-    // Laporan kerusakan infrastruktur (mendukung SDG 11).
+    // ================= REPORTS =================
     match /reports/{reportId} {
-      // Dibaca oleh warga mana pun yang login: dipakai Beranda/Peta "Laporan
-      // Terdekat". Penyaringan isDeleted dilakukan di query klien.
+
       allow read: if isSignedIn();
 
-      // Buat laporan: reporterId WAJIB sama dengan uid pelapor, dan field inti
-      // harus ada + bertipe benar. Laporan baru selalu status 'pending' &
-      // isDeleted=false (mencegah klien menulis status palsu).
       allow create: if isSignedIn()
-        && request.resource.data.reporterId == request.auth.uid
-        && request.resource.data.category is string
+        && request.resource.data.reporterId == uid()
+        && request.resource.data.status == "pending"
+        && request.resource.data.isDeleted == false
         && request.resource.data.description is string
-        && request.resource.data.description.size() > 0
-        && request.resource.data.location is latlng
-        && request.resource.data.address is string
-        && request.resource.data.status == 'pending'
-        && request.resource.data.isDeleted == false;
+        && request.resource.data.address is string;
 
-      // Update/soft-delete HANYA oleh pemilik laporan, dan reporterId tidak boleh
-      // diubah. Aturan bisnis "hanya saat status pending" divalidasi tambahan di
-      // transaction aplikasi; di sini kita jaga kepemilikan & integritas pemilik.
+      // Hanya pemilik (reporterId == uid) yang boleh update, dan reporterId
+      // tidak boleh diubah agar kepemilikan laporan tetap konsisten.
       allow update: if isSignedIn()
-        && resource.data.reporterId == request.auth.uid
+        && resource.data.reporterId == uid()
         && request.resource.data.reporterId == resource.data.reporterId;
 
-      // Tidak ada hard delete — pakai soft delete lewat update di atas.
       allow delete: if false;
     }
 
-    // ── ratings/{ratingId} ───────────────────────────────────────────────────
-    // Penilaian warga atas laporan yang sudah selesai.
+    // ================= RATINGS =================
     match /ratings/{ratingId} {
-      allow read: if isSignedIn()
-        && resource.data.reporterId == request.auth.uid;
 
-      // Pemberi rating harus pemilik sesi; bintang 1..5.
+      allow read: if isSignedIn();
+
       allow create: if isSignedIn()
-        && request.resource.data.reporterId == request.auth.uid
-        && request.resource.data.stars is int
+        && request.resource.data.reporterId == uid()
         && request.resource.data.stars >= 1
         && request.resource.data.stars <= 5;
 
-      // Rating bersifat final (tidak diubah/dihapus dari client).
       allow update, delete: if false;
     }
 
-    // ── notifications/{notifId} ──────────────────────────────────────────────
-    // Notifikasi in-app per pengguna. Umumnya DITULIS oleh backend/Cloud
-    // Function (mis. saat status laporan berubah). Warga hanya membaca miliknya
-    // dan memperbarui isRead / isDeleted (soft delete).
+    // ================= NOTIFICATIONS =================
     match /notifications/{notifId} {
+
       allow read: if isSignedIn()
-        && resource.data.userId == request.auth.uid;
+        && resource.data.userId == uid();
 
-      // Izinkan create oleh pemilik (berguna untuk seeding/manual demo); userId
-      // wajib cocok dengan pengirim.
       allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.title is string;
+        && request.resource.data.userId == uid()
+        && request.resource.data.title is string
+        && request.resource.data.message is string;
 
-      // Pemilik boleh menandai dibaca / soft delete; userId tidak boleh berubah.
       allow update: if isSignedIn()
-        && resource.data.userId == request.auth.uid
+        && resource.data.userId == uid()
         && request.resource.data.userId == resource.data.userId;
 
       allow delete: if false;
     }
 
-    // ── watch_zones/{zoneId} ─────────────────────────────────────────────────
-    // Area pantauan milik warga (CRUD penuh oleh pemilik, hapus = soft delete).
+    // ================= WATCH ZONES =================
     match /watch_zones/{zoneId} {
+
       allow read: if isSignedIn()
-        && resource.data.userId == request.auth.uid;
+        && resource.data.userId == uid();
 
       allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userId == uid()
         && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
         && request.resource.data.latitude is number
         && request.resource.data.longitude is number
-        && request.resource.data.radius is number
-        && request.resource.data.isDeleted == false;
+        && request.resource.data.radius is number;
 
       allow update: if isSignedIn()
-        && resource.data.userId == request.auth.uid
+        && resource.data.userId == uid()
         && request.resource.data.userId == resource.data.userId;
 
       allow delete: if false;

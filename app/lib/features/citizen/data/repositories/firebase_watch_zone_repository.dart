@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/utils/recency_sort.dart';
 import '../../domain/entities/watch_zone.dart';
 import '../../domain/repositories/watch_zone_repository.dart';
 import '../models/watch_zone_model.dart';
@@ -16,12 +17,22 @@ class FirebaseWatchZoneRepository implements WatchZoneRepository {
 
   @override
   Stream<List<WatchZone>> watchUserZones(String userId) {
+    // Hanya dua filter kesetaraan (userId + isDeleted) TANPA orderBy: kombinasi
+    // ini dilayani single-field index bawaan, jadi TIDAK butuh composite index.
+    // Sebelumnya `.orderBy('createdAt')` membuat kueri butuh composite index;
+    // bila index itu belum di-deploy, stream gagal (FAILED_PRECONDITION) dan UI
+    // menampilkan "Gagal memuat". Pengurutan kini dilakukan di klien. Bonus:
+    // zona yang baru dibuat (createdAt server-timestamp masih null saat pending
+    // write) tetap muncul — dan diletakkan paling atas — tanpa menunggu server.
     return _col
         .where('userId', isEqualTo: userId)
         .where('isDeleted', isEqualTo: false)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map(WatchZoneModel.fromFirestore).toList());
+        .map((snap) {
+      final zones = snap.docs.map(WatchZoneModel.fromFirestore).toList();
+      zones.sort((a, b) => compareByDateDesc(a.createdAt, b.createdAt));
+      return zones;
+    });
   }
 
   @override

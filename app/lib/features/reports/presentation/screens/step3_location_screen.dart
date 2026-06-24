@@ -194,6 +194,9 @@ class _Step3LocationScreenState extends State<Step3LocationScreen> {
             child: GoogleMap(
               initialCameraPosition: CameraPosition(target: point, zoom: 16),
               onMapCreated: (c) => _mapController = c,
+              mapType: MapType.hybrid,
+              buildingsEnabled: true,
+              trafficEnabled: false,
               myLocationEnabled: true,
               myLocationButtonEnabled: false,
               onTap: (latLng) => _setPoint(latLng),

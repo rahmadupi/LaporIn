@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
-/// Header biru melengkung di layar Profil: avatar, nama, email, dan dua chip
-/// badge penghargaan.
+/// Header biru melengkung di layar Profil: avatar, nama, dan email.
 ///
-/// Dipecah dari screen karena cukup padat (avatar bertumpuk badge kamera,
-/// gradient, chip). Data identitas dilempar lewat parameter agar bisa diisi
-/// dari user login (nama & email) sementara badge masih dummy.
+/// Data identitas (nama & email) berasal dari user login. Statistik nyata
+/// (jumlah laporan, selesai, watch zone) ditampilkan terpisah pada baris
+/// statistik di bawah header ini, bukan sebagai badge statis.
 class ProfileHeaderWidget extends StatelessWidget {
   const ProfileHeaderWidget({
     super.key,
@@ -51,57 +50,28 @@ class ProfileHeaderWidget extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.85),
             ),
           ),
-          const SizedBox(height: 14),
-          // Dua chip badge berjajar; dibungkus Wrap agar aman bila teks panjang.
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: const [
-              _BadgeChip(icon: Icons.emoji_events, label: 'Pejuang Jalan'),
-              _BadgeChip(icon: Icons.star, label: 'Pelapor Aktif'),
-            ],
-          ),
         ],
       ),
     );
   }
 
-  /// Avatar inisial + badge kamera kecil (placeholder ganti foto profil).
+  /// Avatar inisial nama.
   ///
-  /// Memakai inisial nama, bukan NetworkImage, supaya tidak bergantung koneksi
-  /// internet saat tahap UI dummy ini.
+  /// Memakai inisial nama (bukan NetworkImage) supaya tidak bergantung koneksi
+  /// internet dan tidak perlu foto profil yang belum tersedia.
   Widget _buildAvatar() {
     final initials = _initialsOf(name);
-    return Stack(
-      children: [
-        CircleAvatar(
-          radius: 40,
-          backgroundColor: Colors.white,
-          child: Text(
-            initials,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-          ),
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: Colors.white,
+      child: Text(
+        initials,
+        style: const TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
+          color: AppColors.primary,
         ),
-        // Badge kamera menandakan foto bisa diganti (fitur menyusul).
-        Positioned(
-          right: 0,
-          bottom: 0,
-          child: Container(
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: AppColors.accent,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-            ),
-            child: const Icon(Icons.camera_alt, size: 13, color: Colors.white),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -112,39 +82,5 @@ class ProfileHeaderWidget extends StatelessWidget {
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first[0].toUpperCase();
     return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-}
-
-/// Chip badge penghargaan kecil (ikon + label) berlatar putih transparan.
-class _BadgeChip extends StatelessWidget {
-  const _BadgeChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.accent),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

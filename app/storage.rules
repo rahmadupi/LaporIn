@@ -1,24 +1,31 @@
 rules_version = '2';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LaporIn — Aturan keamanan Firebase Storage.
-//
-// Foto laporan disimpan di `reports/{reportId}/photo.jpg`.
-//   * Hanya pengguna terautentikasi yang boleh mengunggah.
-//   * Batasi tipe konten ke gambar dan ukuran maksimum agar tidak disalahgunakan.
-//   * Read diizinkan bagi pengguna login (foto laporan tampil di Beranda/Peta).
-//
-// Cara deploy: firebase deploy --only storage  (lihat docs/FIREBASE_SETUP.md).
-// ─────────────────────────────────────────────────────────────────────────────
 service firebase.storage {
   match /b/{bucket}/o {
-    match /reports/{reportId}/{fileName} {
-      allow read: if request.auth != null;
 
-      // Maks 10 MB & harus image/*. Mencegah unggahan berkas non-gambar besar.
-      allow write: if request.auth != null
-        && request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // ================= REPORT IMAGES =================
+    match /reports/{reportId}/{fileName} {
+
+      allow read: if isSignedIn();
+
+      // Upload foto laporan: hanya user login, hanya gambar (jpg/jpeg/png),
+      // dan dibatasi maksimal 10 MB untuk mencegah penyalahgunaan storage.
+      allow write: if isSignedIn()
+        && fileName.matches('.*\\.(jpg|jpeg|png)$')
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // ================= DEFAULT BLOCK =================
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

@@ -10,16 +10,15 @@ class AuthNavigator {
 
   /// Menentukan route tujuan setelah login berdasarkan role user.
   ///
-  /// Fokus branch ini adalah Citizen: role `citizen` -> Citizen Home. Role
-  /// lain diarahkan ke placeholder masing-masing; `unknown` aman-kan ke Login.
+  /// Aplikasi ini khusus Citizen: hanya role `citizen` yang diarahkan ke
+  /// Citizen Home. Role lain ditolak di layar Login (tidak punya home di sini)
+  /// dan diamankan kembali ke Login.
   static String homeRouteFor(UserRole role) {
     switch (role) {
       case UserRole.citizen:
         return AppRoutes.citizenHome;
       case UserRole.officer:
-        return AppRoutes.officerHome;
       case UserRole.admin:
-        return AppRoutes.adminHome;
       case UserRole.unknown:
         return AppRoutes.login;
     }

@@ -134,7 +134,17 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<UserRole> _resolveRole(User user, {required bool forceRefresh}) async {
     try {
       // getIdTokenResult membaca token JWT; forceRefresh menarik token baru.
-      final token = await user.getIdTokenResult(forceRefresh);
+      // Bila forceRefresh gagal (mis. API key expired), fallback ke cached token.
+      IdTokenResult token;
+      try {
+        token = await user.getIdTokenResult(forceRefresh);
+      } catch (_) {
+        if (forceRefresh) {
+          token = await user.getIdTokenResult(false);
+        } else {
+          rethrow;
+        }
+      }
       final claimRole = token.claims?['role'] as String?;
       if (claimRole != null) {
         return UserRole.fromString(claimRole);
@@ -143,12 +153,22 @@ class FirebaseAuthRepository implements AuthRepository {
       // Custom claim belum ada -> baca role dari Firestore sebagai cadangan.
       final doc = await _firestore.collection('users').doc(user.uid).get();
       if (!doc.exists) {
-        // Diagnostik: akun ada di Auth tapi belum punya dokumen users/{uid}
-        // (mis. dibuat langsung lewat Firebase Console). Role -> unknown.
-        debugPrint(
-          '[Auth] users/${user.uid} tidak ditemukan; role = unknown.',
-        );
-        return UserRole.unknown;
+        // Akun dibuat langsung via Firebase Console tanpa dokumen Firestore.
+        // Auto-provision sebagai citizen (app ini citizen-only).
+        debugPrint('[Auth] users/${user.uid} tidak ditemukan; auto-provision citizen.');
+        try {
+          await _firestore.collection('users').doc(user.uid).set({
+            'email': user.email ?? '',
+            'displayName': user.displayName ?? user.email?.split('@').first ?? '',
+            'phoneNumber': user.phoneNumber ?? '',
+            'role': 'citizen',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          return UserRole.citizen;
+        } catch (e) {
+          debugPrint('[Auth] Gagal auto-provision users/${user.uid}: $e');
+          return UserRole.unknown;
+        }
       }
       final role = UserRole.fromString(doc.data()?['role'] as String?);
       if (role == UserRole.unknown) {

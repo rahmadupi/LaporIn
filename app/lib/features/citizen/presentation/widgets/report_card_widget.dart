@@ -5,9 +5,9 @@ import '../models/nearby_report.dart';
 
 /// Kartu satu "Laporan Terdekat" untuk ditampilkan di list horizontal.
 ///
-/// Dipisah agar logika tampilan satu kartu (gambar placeholder, badge status,
-/// metadata jarak/waktu) tidak menggemukkan screen. Menerima [NearbyReport]
-/// sehingga mudah diisi data dummy sekarang maupun data Firestore nanti.
+/// Dipisah agar logika tampilan satu kartu (blok gambar fallback, badge
+/// status, metadata jarak/waktu) tidak menggemukkan screen. Menerima
+/// [NearbyReport] yang dibangun dari data laporan NYATA di Firestore.
 class ReportCardWidget extends StatelessWidget {
   const ReportCardWidget({super.key, required this.report, this.onTap});
 

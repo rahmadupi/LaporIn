@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -214,7 +213,9 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
       onCameraIdle: _refreshNearbyCount,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
-      liteModeEnabled: defaultTargetPlatform == TargetPlatform.android,
+      // CATATAN: lite mode SENGAJA tidak dipakai. Lite mode merender peta statis
+      // non-interaktif, sehingga gestur geser ("Geser peta untuk memilih pusat
+      // zona") mati total dan hanya tampil placeholder grid — bukan tile asli.
       circles: {
         Circle(
           circleId: const CircleId('watch_zone_radius'),

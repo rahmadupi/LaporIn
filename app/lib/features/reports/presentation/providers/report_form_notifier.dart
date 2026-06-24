@@ -114,6 +114,9 @@ class ReportFormNotifier extends ChangeNotifier {
   /// Success Screen.
   Future<bool> submit({required String? authUid}) async {
     if (!isReadyToSubmit) return false;
+    // Guard anti double-submit: bila tap beruntun memanggil submit lagi saat
+    // request pertama masih berjalan, abaikan agar tidak membuat laporan ganda.
+    if (_status == SubmitStatus.submitting) return false;
 
     _status = SubmitStatus.submitting;
     _errorMessage = null;

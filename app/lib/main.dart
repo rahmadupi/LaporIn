@@ -10,7 +10,6 @@ import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/forgot_password_screen.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/register_screen.dart';
-import 'features/auth/presentation/screens/role_placeholder_screen.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
 import 'features/citizen/data/repositories/firebase_watch_zone_repository.dart';
 import 'features/citizen/domain/repositories/watch_zone_repository.dart';
@@ -39,9 +38,11 @@ Future<void> main() async {
 
   // Inisialisasi Firebase dengan opsi per-platform sebelum runApp, agar
   // FirebaseAuth/Firestore siap dipakai saat widget pertama dibangun.
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 
   // Siapkan push notification (FCM) setelah Firebase aktif: minta izin,
   // pasang handler foreground/background/terminated, dan tangani deep link.
@@ -101,10 +102,6 @@ class LaporInApp extends StatelessWidget {
           // Citizen masuk ke Main Navigation (bottom nav + tab), bukan langsung
           // ke Home, agar semua tab citizen berada di bawah satu cangkang.
           AppRoutes.citizenHome: (_) => const CitizenMainNavigation(),
-          AppRoutes.officerHome: (_) =>
-              const RolePlaceholderScreen(title: 'Beranda Petugas'),
-          AppRoutes.adminHome: (_) =>
-              const RolePlaceholderScreen(title: 'Beranda Admin'),
           AppRoutes.createReport: (_) => const ReportFlowScreen(),
           AppRoutes.citizenReports: (_) => const ReportHistoryScreen(),
           AppRoutes.citizenNotifications: (_) => const NotificationScreen(),
