@@ -80,7 +80,8 @@ class _MapViewState extends State<_MapView> {
         markerId: MarkerId(report.reportId),
         position: report.location!,
         icon: BitmapDescriptor.defaultMarkerWithHue(_hueFor(report.statusColor)),
-        infoWindow: InfoWindow(title: report.title, snippet: report.address),
+        // Tanpa infoWindow: tap marker hanya buka kartu pratinjau kustom,
+        // bukan info window bawaan Google (cegah UI ganda).
         onTap: () => setState(() => _selectedReportId = report.reportId),
       );
     }).toSet();
@@ -99,17 +100,19 @@ class _MapViewState extends State<_MapView> {
     final notifier = context.watch<NearbyReportsNotifier>();
     final reports = _filtered(notifier.items);
 
-    // Laporan terpilih (bila masih ada setelah filter berubah).
-    final selected = reports.where((r) => r.reportId == _selectedReportId);
-    final selectedReport = selected.isNotEmpty
-        ? selected.first
-        : (reports.isNotEmpty ? reports.first : null);
+    // Kartu pratinjau hanya muncul saat user benar-benar tap marker.
+    // Tanpa _selectedReportId (null) → tak ada kartu. Tap area kosong peta
+    // me-reset _selectedReportId ke null sehingga kartu hilang.
+    final selected = _selectedReportId == null
+        ? const Iterable<NearbyReport>.empty()
+        : reports.where((r) => r.reportId == _selectedReportId);
+    final selectedReport = selected.isNotEmpty ? selected.first : null;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
       body: Stack(
         children: [
-          Positioned.fill(child: _buildMap(reports)),
+          Positioned.fill(child: _buildMap(reports, notifier.origin)),
           Positioned(
             top: 0,
             left: 0,
@@ -158,19 +161,36 @@ class _MapViewState extends State<_MapView> {
     );
   }
 
-  Widget _buildMap(List<NearbyReport> reports) {
+  Widget _buildMap(List<NearbyReport> reports, LatLng? origin) {
     return GoogleMap(
       initialCameraPosition:
           const CameraPosition(target: _initialCenter, zoom: 13),
       onMapCreated: (c) => _mapController = c,
       markers: _buildMarkers(reports),
-      mapType: MapType.hybrid,
+      circles: _buildGeofence(origin),
+      mapType: MapType.normal,
       buildingsEnabled: true,
       trafficEnabled: false,
+      myLocationEnabled: true,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
       onTap: (_) => setState(() => _selectedReportId = null),
     );
+  }
+
+  /// Geofence transparan (radius 1000m) di sekitar posisi pengguna.
+  Set<Circle> _buildGeofence(LatLng? origin) {
+    if (origin == null) return const {};
+    return {
+      Circle(
+        circleId: const CircleId('user_geofence'),
+        center: origin,
+        radius: 1000,
+        fillColor: AppColors.primary.withValues(alpha: 0.12),
+        strokeColor: AppColors.primary.withValues(alpha: 0.40),
+        strokeWidth: 2,
+      ),
+    };
   }
 }
 

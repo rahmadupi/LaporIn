@@ -10,6 +10,7 @@ import 'report_status.dart';
 class Report {
   const Report({
     required this.reportId,
+    required this.displayId,
     required this.reporterId,
     required this.isAnonymous,
     required this.category,
@@ -27,7 +28,15 @@ class Report {
     this.afterPhotoUrl,
   });
 
+  /// ID dokumen Firestore (auto-generated). Sumber kebenaran untuk semua
+  /// operasi CRUD/navigasi (watchReport, softDelete, dll) & key marker peta.
   final String reportId;
+
+  /// Nomor tiket tampilan `LPR-YYYY-NNNNNNN` (skema 8.2). HANYA untuk
+  /// ditampilkan ke pengguna — JANGAN dipakai sebagai ID dokumen (tidak dijamin
+  /// unik karena dibuat acak di klien).
+  final String displayId;
+
   final String reporterId;
   final bool isAnonymous;
   final ReportCategory category;

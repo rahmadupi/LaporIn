@@ -2,9 +2,9 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/services/cloudinary_storage_service.dart';
 import '../../../../core/utils/geo_distance.dart';
 import '../../../../core/utils/recency_sort.dart';
 import '../../domain/entities/report.dart';
@@ -15,18 +15,22 @@ import '../../domain/report_failure.dart';
 import '../../domain/repositories/reports_repository.dart';
 import '../models/report_model.dart';
 
-/// Implementasi konkret [ReportsRepository] di atas Firebase Storage + Firestore.
+/// Implementasi konkret [ReportsRepository] di atas Cloudinary (foto) + Firestore
+/// (data laporan).
 ///
-/// Semua pemanggilan SDK Firebase terkurung di kelas ini (NFR-6).
+/// Foto diunggah ke Cloudinary (unsigned upload) lalu secure URL-nya disimpan ke
+/// dokumen Firestore. Firebase Storage TIDAK lagi dipakai agar proyek tetap
+/// gratis tanpa Blaze plan. Semua pemanggilan SDK/REST terkurung di kelas ini
+/// (NFR-6).
 class FirebaseReportsRepository implements ReportsRepository {
   FirebaseReportsRepository({
     FirebaseFirestore? firestore,
-    FirebaseStorage? storage,
+    CloudinaryStorageService? imageStorage,
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _storage = storage ?? FirebaseStorage.instance;
+        _imageStorage = imageStorage ?? CloudinaryStorageService();
 
   final FirebaseFirestore _firestore;
-  final FirebaseStorage _storage;
+  final CloudinaryStorageService _imageStorage;
 
   @override
   Future<String> createReport({
@@ -40,15 +44,16 @@ class FirebaseReportsRepository implements ReportsRepository {
     required String description,
     required ReportSeverity severity,
   }) async {
-    // reportId dibuat di sisi client lebih dulu karena dibutuhkan SEKALIGUS
-    // sebagai path foto di Storage dan sebagai ID dokumen Firestore — supaya
-    // keduanya saling terkait dan path-nya deterministik.
-    final reportId = _generateReportId();
-    final photoRef = _storage.ref('reports/$reportId/photo.jpg');
+    // ID dokumen dibuat oleh Firestore (auto-ID) untuk MENGHINDARI tabrakan:
+    // `Random().nextInt()` bisa menghasilkan ID yang sama → .set() menimpa
+    // laporan warga lain secara diam-diam. Nomor tiket `LPR-...` tetap dibuat,
+    // tapi HANYA sebagai field tampilan (displayId), bukan ID dokumen.
+    final docRef = _firestore.collection('reports').doc(); // auto-ID unik
+    final displayId = _generateReportId();
 
     // ── Validasi berkas lokal sebelum upload ──────────────────────────────
     // Cegah error membingungkan: pastikan file benar-benar ada & tidak melebihi
-    // batas Storage (10 MB) sehingga pesan yang muncul tepat sasaran.
+    // batas 10 MB sehingga pesan yang muncul tepat sasaran.
     if (!await photo.exists()) {
       throw ReportFailure.photoInvalid();
     }
@@ -56,37 +61,33 @@ class FirebaseReportsRepository implements ReportsRepository {
     if (length <= 0) throw ReportFailure.photoInvalid();
     if (length >= 10 * 1024 * 1024) throw ReportFailure.photoTooLarge();
 
-    // ── Tahap 1: Upload foto ke Storage ───────────────────────────────────
-    // Dilakukan duluan karena URL hasil upload harus ikut masuk ke dokumen
-    // Firestore. Jika tahap ini gagal, belum ada apa pun yang perlu dibersihkan.
+    // ── Tahap 1: Upload foto ke Cloudinary (unsigned) ─────────────────────
+    // Dilakukan duluan karena secure URL hasil upload harus ikut masuk ke
+    // dokumen Firestore. Jika tahap ini gagal, belum ada dokumen yang dibuat.
     String photoUrl;
     try {
-      final task = await photoRef.putFile(
-        photo,
-        SettableMetadata(contentType: 'image/jpeg'),
-      );
-      photoUrl = await task.ref.getDownloadURL();
-    } on FirebaseException catch (e) {
-      // Log diagnostik HANYA di debug (tanpa token/PII) agar penyebab nyata
-      // terlihat saat pengembangan, lalu petakan ke pesan spesifik.
-      if (kDebugMode) {
-        debugPrint('[Report] Upload foto gagal: code=${e.code} msg=${e.message}');
-      }
-      throw _mapStorageError(e);
+      final result = await _imageStorage.uploadReportPhoto(photo);
+      photoUrl = result.secureUrl;
+    } on CloudinaryUploadException catch (e) {
+      // Log diagnostik HANYA di debug agar penyebab nyata terlihat saat
+      // pengembangan, lalu petakan ke pesan spesifik untuk pengguna.
+      if (kDebugMode) debugPrint('[Report] Upload Cloudinary gagal: $e');
+      throw _mapUploadError(e);
     } catch (e) {
-      if (kDebugMode) debugPrint('[Report] Upload foto gagal (non-Firebase): $e');
+      if (kDebugMode) debugPrint('[Report] Upload foto gagal (tak terduga): $e');
       throw ReportFailure.photoUpload();
     }
 
     // ── Tahap 2: Tulis dokumen laporan ke Firestore ──────────────────────
-    // Upload Storage & write Firestore adalah dua operasi terpisah (bukan satu
-    // transaksi atomik lintas-layanan). Maka bila Firestore gagal SETELAH foto
-    // sukses ter-upload, kita hapus foto yatim itu (best-effort) agar Storage
-    // tidak menyimpan berkas tanpa dokumen yang merujuknya.
+    // Upload Cloudinary & write Firestore adalah dua operasi terpisah. Bila
+    // Firestore gagal SETELAH foto ter-upload, foto Cloudinary menjadi yatim.
+    // Unsigned upload TIDAK bisa menghapus aset dari klien (butuh API Secret /
+    // server), jadi pembersihan otomatis dilewati — akseptabel untuk dev; di
+    // produksi gunakan Cloud Function/cron Cloudinary untuk membersihkan yatim.
     try {
-      await _firestore.collection('reports').doc(reportId).set(
+      await docRef.set(
             ReportModel.toFirestore(
-              reportId: reportId,
+              displayId: displayId,
               reporterId: reporterId,
               isAnonymous: isAnonymous,
               category: category,
@@ -100,27 +101,30 @@ class FirebaseReportsRepository implements ReportsRepository {
           );
     } catch (e) {
       if (kDebugMode) debugPrint('[Report] Tulis Firestore gagal: $e');
-      // Rollback parsial: buang foto yang sudah terlanjur ter-upload.
-      await photoRef.delete().catchError((_) {});
+      // Foto sudah ter-upload ke Cloudinary tetapi dokumen gagal ditulis. Aset
+      // dibiarkan yatim (tidak bisa dihapus dari klien tanpa API Secret).
       throw ReportFailure.firestoreWrite();
     }
 
-    return reportId;
+    // Kembalikan nomor tiket tampilan untuk Success Screen (bukan doc.id).
+    return displayId;
   }
 
-  /// Petakan kode error Firebase Storage ke [ReportFailure] yang spesifik,
+  /// Petakan jenis kegagalan upload Cloudinary ke [ReportFailure] yang spesifik,
   /// sehingga pengguna melihat pesan tepat (bukan selalu "Gagal mengunggah").
-  ReportFailure _mapStorageError(FirebaseException e) {
-    switch (e.code) {
-      case 'unauthorized':
-      case 'unauthenticated':
+  ReportFailure _mapUploadError(CloudinaryUploadException e) {
+    switch (e.kind) {
+      // Salah konfigurasi developer (cloudName/preset kosong) — bukan kesalahan
+      // pengguna, tetapi UI tetap menampilkan pesan upload generik.
+      case CloudinaryErrorKind.notConfigured:
+        return ReportFailure.photoUpload();
+      case CloudinaryErrorKind.unauthorized:
         return ReportFailure.unauthorized();
-      case 'retry-limit-exceeded':
-      case 'canceled':
+      case CloudinaryErrorKind.network:
         return ReportFailure.network();
-      case 'object-not-found':
+      case CloudinaryErrorKind.invalid:
         return ReportFailure.photoInvalid();
-      default:
+      case CloudinaryErrorKind.unknown:
         return ReportFailure.photoUpload();
     }
   }
@@ -151,13 +155,16 @@ class FirebaseReportsRepository implements ReportsRepository {
   Stream<List<Report>> watchPublicReports({int limit = 50}) {
     // Laporan publik terbaru lintas-warga untuk Beranda/Peta. Hanya yang belum
     // dihapus; dibatasi agar hemat baca. Penyaringan jarak dilakukan di klien.
-    // Tanpa orderBy server-side (menghindari composite index isDeleted+createdAt
-    // yang mungkin belum di-deploy). `.limit` membatasi baca; recency dipulihkan
-    // dengan mengurutkan di klien. Untuk skala kecil aplikasi ini, hasil praktis
-    // sama dengan "terbaru dulu".
+    //
+    // orderBy('createdAt' desc) DI SERVER sebelum .limit() memastikan yang
+    // diambil benar-benar N terbaru (bukan N acak yang lalu diurutkan di klien).
+    // Butuh composite index isDeleted ASC + createdAt DESC (firestore.indexes.
+    // json). Sort klien dipertahankan sebagai jaring pengaman untuk dokumen
+    // dengan createdAt masih null (serverTimestamp pending) yang belum terindeks.
     return _firestore
         .collection('reports')
         .where('isDeleted', isEqualTo: false)
+        .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
         .map((snap) => _sortedByCreatedAtDesc(
@@ -173,9 +180,13 @@ class FirebaseReportsRepository implements ReportsRepository {
   }) async {
     // Ambil kandidat laporan publik terbaru, lalu saring di klien berdasarkan
     // jarak haversine + status masih aktif (belum selesai/ditolak).
+    //
+    // orderBy('createdAt' desc) sebelum .limit() → kandidat adalah laporan
+    // TERBARU, bukan sembarang. Butuh composite index isDeleted+createdAt.
     final snap = await _firestore
         .collection('reports')
         .where('isDeleted', isEqualTo: false)
+        .orderBy('createdAt', descending: true)
         .limit(candidateLimit)
         .get();
 
@@ -286,10 +297,12 @@ class FirebaseReportsRepository implements ReportsRepository {
     return reports;
   }
 
-  /// Membuat nomor tiket format `LPR-YYYY-NNNNNNN` (skema 8.2).
+  /// Membuat nomor tiket TAMPILAN format `LPR-YYYY-NNNNNNN` (skema 8.2).
   ///
-  /// 7 digit acak cukup untuk demo; di produksi sebaiknya pakai counter server
-  /// (Cloud Function) agar dijamin unik & berurutan.
+  /// HANYA untuk ditampilkan (field `displayId`) — BUKAN ID dokumen Firestore.
+  /// 7 digit acak bisa bertabrakan, jadi tidak aman sebagai kunci unik; ID
+  /// dokumen memakai auto-ID Firestore. Di produksi, untuk tiket yang dijamin
+  /// unik & berurutan pakai counter server (Cloud Function).
   String _generateReportId() {
     final year = DateTime.now().year;
     final number = Random().nextInt(9999999).toString().padLeft(7, '0');

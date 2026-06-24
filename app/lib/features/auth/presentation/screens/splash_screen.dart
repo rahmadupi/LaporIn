@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/config/cloudinary_config.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/user_role.dart';
@@ -22,6 +23,9 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    // Validasi konfigurasi non-blocking: peringatkan di console (DEBUG) bila
+    // kredensial Cloudinary belum diisi. Tidak menahan splash & tidak crash.
+    CloudinaryConfig.debugWarnIfUnconfigured();
     // Dijalankan setelah frame pertama selesai agar context siap dipakai
     // untuk navigasi dan akses Provider.
     WidgetsBinding.instance.addPostFrameCallback((_) => _decideNextRoute());

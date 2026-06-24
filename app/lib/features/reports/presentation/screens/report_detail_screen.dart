@@ -186,7 +186,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         Row(
           children: [
             Text(
-              report.reportId,
+              report.displayId,
               style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.primary,

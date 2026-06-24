@@ -2,13 +2,13 @@
 ///
 /// Sama seperti AuthFailure di fitur auth: UI cukup menangkap [ReportFailure]
 /// dan menampilkan [message] berbahasa Indonesia, tanpa perlu tahu apakah
-/// kegagalan berasal dari Storage, Firestore, atau jaringan.
+/// kegagalan berasal dari Cloudinary, Firestore, atau jaringan.
 class ReportFailure implements Exception {
   const ReportFailure(this.message);
 
   final String message;
 
-  /// Gagal saat mengunggah foto ke Firebase Storage (penyebab jaringan/umum).
+  /// Gagal saat mengunggah foto ke Cloudinary (penyebab jaringan/umum).
   factory ReportFailure.photoUpload() => const ReportFailure(
         'Gagal mengunggah foto. Periksa koneksi lalu coba lagi.',
       );
@@ -23,7 +23,7 @@ class ReportFailure implements Exception {
         'Ukuran foto terlalu besar (maks 10 MB). Coba foto lain.',
       );
 
-  /// Tidak punya izin mengunggah (sesi habis / aturan Storage menolak).
+  /// Tidak punya izin mengunggah (sesi habis / preset Cloudinary menolak).
   factory ReportFailure.unauthorized() => const ReportFailure(
         'Sesi tidak sah untuk mengunggah. Silakan login ulang.',
       );

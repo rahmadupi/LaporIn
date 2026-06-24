@@ -25,8 +25,13 @@ class ReportModel {
     final photos = (data['photoUrls'] as List?)?.cast<String>() ?? const [];
 
     return Report(
-      // Pakai field reportId bila ada, jika tidak pakai id dokumen.
-      reportId: (data['reportId'] as String?) ?? doc.id,
+      // ID dokumen Firestore = sumber kebenaran untuk CRUD/navigasi.
+      reportId: doc.id,
+      // Nomor tiket tampilan. `displayId` skema baru; fallback ke `reportId`
+      // (dokumen lama menyimpan LPR di field itu), lalu ke doc.id.
+      displayId: (data['displayId'] as String?) ??
+          (data['reportId'] as String?) ??
+          doc.id,
       reporterId: (data['reporterId'] as String?) ?? '',
       isAnonymous: (data['isAnonymous'] as bool?) ?? false,
       category: ReportCategory.fromSlug(data['category'] as String?),
@@ -52,7 +57,7 @@ class ReportModel {
   /// geografis (deteksi duplikat / Watch Zones). `status` selalu `pending`
   /// untuk laporan baru — alur verifikasi mengubahnya belakangan.
   static Map<String, dynamic> toFirestore({
-    required String reportId,
+    required String displayId,
     required String reporterId,
     required bool isAnonymous,
     required ReportCategory category,
@@ -64,7 +69,9 @@ class ReportModel {
     required ReportSeverity severity,
   }) {
     return {
-      'reportId': reportId,
+      // ID dokumen TIDAK disimpan ulang sebagai field — doc.id sumber kebenaran.
+      // `displayId` = nomor tiket tampilan saja (lihat _generateReportId).
+      'displayId': displayId,
       'reporterId': reporterId,
       'isAnonymous': isAnonymous,
       'category': category.slug,

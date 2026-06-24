@@ -35,7 +35,8 @@ class NearbyReport {
   final String distance;
   final String timeAgo;
 
-  /// Koordinat di peta (selalu ada untuk laporan asli).
+  /// Koordinat di peta. Null bila laporan tak punya koordinat valid
+  /// (data legacy/rusak dengan lat==0 && lng==0) → tidak dirender sebagai pin.
   final LatLng? location;
 
   /// Label & warna badge status (mengikuti ReportStatus).
@@ -64,6 +65,10 @@ class NearbyReport {
           )
         : 'Sekitar';
 
+    // Koordinat (0,0) = data legacy/rusak → null, bukan pin di tengah laut.
+    // Penjaga `.where((r) => r.location != null)` menyaringnya dari peta.
+    final hasCoords = report.latitude != 0 || report.longitude != 0;
+
     return NearbyReport(
       reportId: report.reportId,
       categorySlug: report.category.slug,
@@ -75,7 +80,7 @@ class NearbyReport {
       statusColor: report.status.color,
       imageColor: _categoryColor(report),
       imageIcon: report.category.icon,
-      location: LatLng(report.latitude, report.longitude),
+      location: hasCoords ? LatLng(report.latitude, report.longitude) : null,
     );
   }
 

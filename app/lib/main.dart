@@ -38,20 +38,36 @@ Future<void> main() async {
 
   // Inisialisasi Firebase dengan opsi per-platform sebelum runApp, agar
   // FirebaseAuth/Firestore siap dipakai saat widget pertama dibangun.
-  if (Firebase.apps.isEmpty) {
+  //
+  // Firebase bisa ter-init oleh layer native sebelum main() Dart berjalan,
+  // sehingga Firebase.apps.isEmpty kadang masih true saat dipanggil namun
+  // initializeApp tetap melempar duplicate-app (race). Tangkap & abaikan agar
+  // exception tak menggagalkan main() dan menahan runApp().
+  try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+  } on FirebaseException catch (e) {
+    if (e.code != 'duplicate-app') rethrow;
   }
 
-  // Siapkan push notification (FCM) setelah Firebase aktif: minta izin,
-  // pasang handler foreground/background/terminated, dan tangani deep link.
-  await NotificationService(
-    navigatorKey: navigatorKey,
-    messengerKey: scaffoldMessengerKey,
-  ).init();
-
   runApp(const LaporInApp());
+
+  // Init FCM setelah runApp agar permission dialog tidak menahan frame pertama.
+  // runApp() non-blocking — async continuation ini berjalan segera setelahnya.
+  //
+  // Push notification kini RECEIVE-ONLY: tanpa server (Cloud Functions butuh
+  // Blaze) tidak ada yang mengirim push, dan koleksi `notifications` tetap
+  // kosong sampai ada backend yang mengisinya. Init dibungkus try/catch agar
+  // kegagalan apa pun (mis. tanpa Google Play Services) tidak menggagalkan app.
+  try {
+    await NotificationService(
+      navigatorKey: navigatorKey,
+      messengerKey: scaffoldMessengerKey,
+    ).init();
+  } catch (e) {
+    debugPrint('[FCM] Init dilewati (fitur push opsional): $e');
+  }
 }
 
 class LaporInApp extends StatelessWidget {

@@ -40,11 +40,19 @@ service cloud.firestore {
         && request.resource.data.description is string
         && request.resource.data.address is string;
 
-      // Hanya pemilik (reporterId == uid) yang boleh update, dan reporterId
-      // tidak boleh diubah agar kepemilikan laporan tetap konsisten.
+      // Hanya pemilik (reporterId == uid) yang boleh update. Warga hanya boleh
+      // mengubah deskripsi (FR-2.4) dan men-soft-delete (FR-2.5) miliknya. Field
+      // yang menentukan alur kerja/identitas DIKUNCI agar tidak bisa dimanipulasi
+      // dari klien: hanya proses moderasi sisi-server (Admin/Officer) yang berhak
+      // mengubah `status`. Tanpa server, status efektif immutable dari aplikasi.
       allow update: if isSignedIn()
         && resource.data.reporterId == uid()
-        && request.resource.data.reporterId == resource.data.reporterId;
+        && request.resource.data.reporterId == resource.data.reporterId
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.isAnonymous == resource.data.isAnonymous
+        && request.resource.data.category == resource.data.category
+        && request.resource.data.severity == resource.data.severity
+        && request.resource.data.reportId == resource.data.reportId;
 
       allow delete: if false;
     }

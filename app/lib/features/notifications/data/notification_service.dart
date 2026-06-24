@@ -37,29 +37,40 @@ class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
   /// Inisialisasi izin + seluruh listener untuk tiga kondisi app.
+  ///
+  /// CATATAN ARSITEKTUR: tanpa server (Cloud Functions butuh Blaze), TIDAK ada
+  /// yang MENGIRIM push antar-pengguna. Service ini hanya RECEIVE-ONLY —
+  /// menyiapkan izin + listener supaya app siap bila suatu hari ada backend yang
+  /// mengirim. Seluruh init dibungkus try/catch agar kegagalan apa pun
+  /// (perangkat tanpa Google Play Services, FCM tak tersedia) tidak menggagalkan
+  /// app: fitur push memang opsional di tahap dev ini.
   Future<void> init() async {
-    // 1) Minta izin notifikasi (wajib di iOS & Android 13+).
-    await _messaging.requestPermission();
+    try {
+      // 1) Minta izin notifikasi (wajib di Android 13+).
+      await _messaging.requestPermission();
 
-    // 2) Daftarkan handler background/terminated (fungsi top-level di atas).
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      // 2) Daftarkan handler background/terminated (fungsi top-level di atas).
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-    // 3) FOREGROUND: app sedang dibuka. FCM tidak menampilkan notifikasi sistem
-    //    otomatis, jadi kita tampilkan banner in-app sendiri.
-    FirebaseMessaging.onMessage.listen(_showForegroundBanner);
+      // 3) FOREGROUND: app sedang dibuka. FCM tidak menampilkan notifikasi
+      //    sistem otomatis, jadi kita tampilkan banner in-app sendiri.
+      FirebaseMessaging.onMessage.listen(_showForegroundBanner);
 
-    // 4) BACKGROUND: app hidup di belakang lalu notifikasi diketuk -> deep link.
-    FirebaseMessaging.onMessageOpenedApp.listen(_routeFromMessage);
+      // 4) BACKGROUND: app hidup di belakang lalu notifikasi diketuk -> deep link.
+      FirebaseMessaging.onMessageOpenedApp.listen(_routeFromMessage);
 
-    // 5) TERMINATED: app mati total lalu dibuka lewat ketukan notifikasi.
-    //    getInitialMessage() mengembalikan pesan pemicunya (null jika app
-    //    dibuka normal).
-    final initialMessage = await _messaging.getInitialMessage();
-    if (initialMessage != null) {
-      // Tunda sampai frame pertama agar Navigator sudah siap sebelum push.
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _routeFromMessage(initialMessage),
-      );
+      // 5) TERMINATED: app mati total lalu dibuka lewat ketukan notifikasi.
+      //    getInitialMessage() mengembalikan pesan pemicunya (null jika app
+      //    dibuka normal).
+      final initialMessage = await _messaging.getInitialMessage();
+      if (initialMessage != null) {
+        // Tunda sampai frame pertama agar Navigator sudah siap sebelum push.
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _routeFromMessage(initialMessage),
+        );
+      }
+    } catch (e) {
+      debugPrint('[FCM] init gagal (diabaikan, push receive-only & opsional): $e');
     }
   }
 

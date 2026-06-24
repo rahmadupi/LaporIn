@@ -176,10 +176,16 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
       body: Stack(
         children: [
           Positioned.fill(child: _buildMap()),
+          // Pin pusat zona disematkan tepat di target kamera (tengah viewport
+          // peta). FractionalTranslation menaikkan pin setengah tingginya agar
+          // ujung pin menyentuh titik tengah — sejajar sempurna dgn _center.
           const Positioned.fill(
             child: Align(
-              alignment: Alignment(0, -0.22),
-              child: _CenterPin(),
+              alignment: Alignment.center,
+              child: FractionalTranslation(
+                translation: Offset(0, -0.5),
+                child: _CenterPin(),
+              ),
             ),
           ),
           _buildTopOverlay(),
@@ -209,7 +215,7 @@ class _WatchZoneScreenState extends State<WatchZoneScreen> {
     return GoogleMap(
       initialCameraPosition: CameraPosition(target: _center, zoom: 14),
       onMapCreated: (c) => _mapController = c,
-      onCameraMove: (pos) => _center = pos.target,
+      onCameraMove: (pos) => setState(() => _center = pos.target),
       onCameraIdle: _refreshNearbyCount,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
