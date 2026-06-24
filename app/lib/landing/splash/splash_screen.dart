@@ -47,11 +47,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (_hasNavigated || !mounted) return;
     _hasNavigated = true;
 
-    if (user != null) {
-      context.go(_getRouteForRole(user.role));
-    } else {
-      context.go(AppRoutes.login);
-    }
+    // Beri jeda singkat agar splash screen terlihat oleh pengguna
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      if (user != null) {
+        context.go(_getRouteForRole(user.role));
+      } else {
+        context.go(AppRoutes.login);
+      }
+    });
   }
 
   String _getRouteForRole(UserRole role) {
