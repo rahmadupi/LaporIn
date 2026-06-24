@@ -1,0 +1,155 @@
+# ======================================
+# LaporIn - Root .gitignore
+# ======================================
+# This file prevents sensitive data (Firebase keys, API keys, .env files)
+# from being pushed to GitHub.
+
+# ----- FIREBASE CONFIG (CRITICAL - DO NOT COMMIT) -----
+# Android Firebase config
+**/google-services.json
+**/google-services.json.example
+
+# iOS Firebase config
+**/GoogleService-Info.plist
+**/GoogleService-Info.plist.example
+
+# Flutter Firebase generated config
+**/firebase_options.dart
+**/firebase_options.dart.example
+
+# Firebase project files
+**/firebase.json
+**/.firebaserc
+**/firestore.indexes.json
+**/firestore.rules
+**/storage.rules
+
+# ----- ENVIRONMENT VARIABLES & SECRETS -----
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+**/.env
+**/.env.*
+**/secrets.json
+**/api_keys.json
+**/credentials.json
+
+# ----- GOOGLE SERVICES API KEYS -----
+**/api_key.txt
+**/service-account*.json
+**/*-firebase-adminsdk-*.json
+**/google-credentials.json
+
+# ----- IDE / EDITOR FILES -----
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*~
+
+# ----- OS FILES -----
+.DS_Store
+Thumbs.db
+*.DS_Store
+desktop.ini
+$RECYCLE.BIN/
+
+# ----- BUILD OUTPUTS -----
+# Dart/Flutter
+.dart_tool/
+.pub-cache/
+.pub/
+build/
+**/build/
+.flutter-plugins-dependencies
+.flutter-plugins
+**/.dart_tool/
+
+# Android
+**/.gradle/
+**/local.properties
+**/key.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+release/
+**/release
+**/debug
+**/profile
+**/captures/
+**/gradlew
+**/gradlew.bat
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+**/ios/Flutter/.last_build_id
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/xcuserdata/
+
+# Other build artifacts
+.build/
+.buildlog/
+app.*.symbols
+app.*.map.json
+**/Runner.xcworkspace/xcuserdata/
+
+# ----- NODE / NPM -----
+node_modules/
+npm-debug.log
+yarn-error.log
+.yarn/
+.pnp.*
+
+# ----- COVERAGE / TEST REPORTS -----
+coverage/
+*.lcov
+.nyc_output/
+test/.test_coverage/
+test/reports/
+
+# ----- LOGS -----
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# ----- MISC -----
+.history
+.svn/
+.swiftpm/
+.migrate_working_dir/
+*.bak
+*.tmp
+*.swp
+
+# ----- LARAVEL/OTHER (just in case) -----
+vendor/
+.env.example
+
+# ======================================
+# IMPORTANT: Do NOT ignore:
+# - .gitignore itself
+# - README.md
+# - License files
+# - Source code (.dart, .yaml, .md)
+# ======================================
+!.gitignore
+!.metadata
+!README.md
+!LICENSE*

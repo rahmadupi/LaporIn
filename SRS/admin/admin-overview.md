@@ -27,8 +27,8 @@
 | **ADM-021** | Admin dapat Log Out dari akun admin.                                                                                                                                                        | Firebase Auth Sign Out + Clear Local Storage                                                     |
 | **ADM-022** | Admin dapat menghapus (delete) akun admin sendiri.                                                                                                                                          | Firebase Auth Account Delete + Firestore User Profile Delete                                     |                                                        | **ADM-023** | Admin dapat melihat daftar appeals (banding) dari warga yang laporan ditolak. | Firestore Query `where("appealRequested", "==", true)` |
 | **ADM-024** | Admin dapat menerima atau menolak appeal warga.                                                                                                                                             | Firestore Document Update (Accept: status → in_review, Reject: appealRequested → false)          |
-| **ADM-025** | Admin dapat melihat daftar pengguna yang diblokir (banned).                                                                                                                                 | Firestore Query `where("isActive", "==", false)`                                                 |
-| **ADM-026** | Admin dapat melakukan unbanned (membuka blokir) pengguna yang sebelumnya diblokir.                                                                                                          | Firestore Document Update `isActive: true`                                                       |
+| **ADM-025** | Admin dapat melihat daftar pengguna yang diblokir (banned).                                                                                                                                 | Firestore Query `where("status", "==", "banned")`                                                |
+| **ADM-026** | Admin dapat melakukan unbanned (membuka blokir) pengguna yang sebelumnya diblokir.                                                                                                          | Firestore Document Update `status: "active"`                                                     |
 
 > Note Implementasi: Beberapa kebutuhan tergantung pada implementasi pada role petugas lapangan dan warga.
 
@@ -86,13 +86,42 @@
 
 - **Admin Peta:**:
   - Tampilan peta interaktif dengan marker untuk setiap laporan yang masuk, berwarna berdasarkan status laporan (misal: merah untuk Pending, kuning untuk In Review, hijau untuk Resolved).
-  - Fitur filter lokasi berdasarkan radius geohash dan tingkatan wilayah (Provinsi, Kota, Desa).
+  - **Fitur Filter:**
+    - Filter berdasarkan **status** laporan (Pending, In Review, Dispatched, In Progress, Resolved, Rejected).
+    - Filter berdasarkan **kategori** (Jalan, Drainase, Penerangan, dll.).
+    - Filter berdasarkan **district/wilayah** (Provinsi, Kota, Desa).
+    - Filter berdasarkan **radius geohash** (distance from a point).
+    - Filter berdasarkan **tingkat urgensi** (Darurat, Biasa, Rendah).
+    - Filter berdasarkan **range tanggal** (tanggal laporan masuk).
+  - **Search:** Pencarian laporan berdasarkan judul atau alamat.
   - Opsi untuk mengklik marker dan langsung melihat detail laporan serta opsi aksi (Accept, Reject, Dispatch).
 
 - **Admin Petugas:**:
-  - Daftar petugas lapangan yang terdaftar dengan informasi kontak dan status ketersediaan.
-  - Halaman khusus untuk melihat ajuan diri petugas pada laporan tertentu, dengan opsi untuk menerima atau menolak ajuan tersebut.
-  - Fitur untuk mengelola jadwal kerja petugas lapangan, termasuk penugasan ulang jika diperlukan.
+  Halaman manajemen petugas lapangan dengan **3 sub-page** yang dapat diakses via tab/bottom navigation dalam section Petugas:
+
+  #### Sub-page 1: Daftar Petugas (Officer List)
+  - Daftar seluruh petugas lapangan yang terdaftar dengan informasi kontak dan status ketersediaan (`isAvailable`).
+  - **Filter**: berdasarkan status ketersediaan (Tersedia/Sedang Tugas), district, dan skill/keahlian.
+  - **Search**: pencarian berdasarkan nama atau nomor HP.
+  - **Kartu petugas**: menampilkan nama, photo, district, jumlah tugas aktif, rating (jika ada), status online/offline.
+  - Aksi per petugas: lihat profil lengkap, ubah status ketersediaan, reassign tugas.
+
+  #### Sub-page 2: Persetujuan (Pending Approval)
+  - Daftar officer yang **berstatus `status: "pending"`** — akun yang mendaftar tetapi belum disetujui admin.
+  - Setiap kartu menampilkan: nama, email, nomor HP, tanggal pendaftaran, daerah asal.
+  - Aksi per officer:
+    - **"Setujui"** → `status: "active"`, `approvedBy: adminId`, `approvedAt: Timestamp` → officer dapat login.
+    - **"Tolak"** → akun dihapus dari Firebase Auth + Firestore, atau ditandai `status: "banned"` dengan `banReason` berisi alasan penolakan.
+  - Notifikasi FCM dikirim ke officer saat persetujuan ditolak.
+
+  #### Sub-page 3: Permintaan Tugas (Officer Task Requests)
+  - Daftar ajuan diri officer yang **meminta untuk ditugaskan** pada laporan tertentu.
+  - Setiap item menampilkan: nama officer, laporan yang diminta (judul + lokasi), timestamp ajuan, status.
+  - Aksi per ajuan:
+    - **"Terima"** → membuka **Form Dispatch** dengan field **Officer pre-filled** (dari officer yang meminta) + data laporan. Admin tinggal konfirmasi atau ubah jika perlu.
+    - **"Tolak"** → status ajuan diubah ke `rejected`, officer mendapat notifikasi penolakan.
+  - Filter: berdasarkan status ajuan (pending/accepted/rejected), district, tanggal.
+  - Search: pencarian berdasarkan nama officer atau judul laporan.
 
 - **Admin Profile:**:
   - Halaman profil admin dengan informasi pribadi dan opsi untuk mengubah password.

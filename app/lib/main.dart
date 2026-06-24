@@ -1,30 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:laporin/core/routing/app_router.dart'; 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-void main() {
-  runApp(const LaporInApp());
+import 'core/routing/app_router.dart';
+import 'core/theme/app_theme.dart';
+import 'firebase_options.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runApp(const ProviderScope(child: LaporInApp()));
 }
 
-class LaporInApp extends StatelessWidget {
+class LaporInApp extends ConsumerWidget {
   const LaporInApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Initialize the router from your app_router.dart file
-    final appRouter = createRouter();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
 
-    // Use MaterialApp.router instead of the standard MaterialApp
     return MaterialApp.router(
-      title: 'LaporIn Admin',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      // Pass the router configuration to the app
-      routerConfig: appRouter,
-      
-      // Optional: hide the debug banner
-      debugShowCheckedModeBanner: false, 
+      title: 'LaporIn',
+      theme: AppTheme.light,
+      routerConfig: router,
+      debugShowCheckedModeBanner: false,
     );
   }
 }

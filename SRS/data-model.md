@@ -14,8 +14,16 @@ This document outlines the schema-less document structure for the LaporIn platfo
 "phoneNumber": "+6281234567890",
 "role": "admin", // "citizen" | "officer" | "admin"
 "fcmToken": "token_abc_123", // Used for Firebase Cloud Messaging (Push Notifications)
-"isActive": true, // Set to false if Admin bans the user (ADM-019) only for citzens and officers
-"isAvailable": true, // Used only if role == "officer" (ADM-014)
+"status": "active", // "active" | "pending" | "banned".
+// - "active" : account is operational, can sign in.
+// - "pending" : officer registered but awaiting admin approval; cannot sign in until promoted to "active".
+// - "banned" : blocked by admin (covers citizen ban from ADM-019 AND officer rejection from officer-approval queue); cannot sign in.
+"isAvailable": true, // Used only if role == "officer" (ADM-014). Controls dispatch availability, NOT account status — orthogonal to `status`.
+"banReason": null, // Set when status = "banned"; admin-supplied rejection/ban reason.
+"bannedAt": null, // Timestamp when status transitioned to "banned".
+"bannedBy": null, // Admin UID who set status = "banned".
+"approvedBy": null, // Admin UID who approved an officer (status: pending → active).
+"approvedAt": null, // Timestamp of officer approval.
 "createdAt": "2026-06-09T03:30:00Z"
 }
 

@@ -11,6 +11,7 @@ Admins can manage their own personal settings (Profile) as well as moderate the 
 ## 3. UI/UX Requirements
 
 - **Profile Page:** Form to update Display Name, change password, and toggle FCM notification preferences.
+- **Forgot Password (Reset):** Tombol "Lupa Password" di halaman Login. Menggunakan `FirebaseAuth.instance.sendPasswordResetEmail()`. Instruksi: cek inbox email untuk link reset.
 - **Logout Button:** Tombol "Log Out" yang mengarahkan ke Landing Page. Menghapus session dari local storage.
 - **Delete Account Button:** Tombol "Hapus Akun" dengan konfirmasityped (isi "HAPUS"). Jika diklik:
   1. Firestore user document di-delete
@@ -24,8 +25,8 @@ Admins can manage their own personal settings (Profile) as well as moderate the 
 - **Input (Update Profile):** `{ "fullName": "New Name", "fcmToken": "new_token" }` + Firebase Auth profile update.
 - **Input (Log Out):** `{ "fcmToken": null }` + `FirebaseAuth.instance.signOut()` + clear local storage.
 - **Input (Delete Account):** Cloud Function: Delete Firebase Auth user + Delete Firestore document `/users/{uid}`.
-- **Input (Ban User):** Update `/users/{targetUid}` -> `{ "isActive": false }`.
-- **Expected Output:** Cloud Function listens to `isActive: false` trigger, interfaces with Firebase Admin SDK, and revokes the user's Auth refresh tokens, forcing them to log out globally.
+- **Input (Ban User):** Update `/users/{targetUid}` -> `{ "status": "banned", "banReason": reason, "bannedAt": serverTimestamp, "bannedBy": adminId }`.
+- **Expected Output:** Cloud Function listens to `status: "banned"` trigger, interfaces with Firebase Admin SDK, and revokes the user's Auth refresh tokens, forcing them to log out globally.
 
 ## 5. Acceptance Criteria
 
@@ -49,6 +50,6 @@ Admins can manage their own personal settings (Profile) as well as moderate the 
 
 - **Given** an Admin identifies a Citizen submitting false reports.
 - **When** the Admin executes the "Ban User" action.
-- **Then** the Citizen's Firestore profile is marked `isActive: false`.
+  - **Then** the Citizen's Firestore profile is marked `status: "banned"`.
 - **And** a Cloud Function revokes their Firebase Auth session.
 - **And** the Citizen is immediately kicked to the Login screen if they are currently using the app.

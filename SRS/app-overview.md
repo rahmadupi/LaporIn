@@ -8,13 +8,36 @@ LaporIn adalah aplikasi pelaporan infrastruktur publik berbasis mobile yang dira
 
 Aplikasi ini dibangun menggunakan arsitektur serverless penuh untuk menjamin kecepatan _deployment_, efisiensi biaya, dan skalabilitas otomatis tanpa pengelolaan server mandiri:
 
-- **Frontend:** Flutter SDK (Multiplatform iOS/Android) + Riverpod (State Management)
+- **Frontend:** Flutter SDK (Multiplatform iOS/Android) + **Riverpod** (State Management)
 - **Authentication:** Firebase Authentication (Custom Accounts + Google Sign-In)
 - **Database:** Cloud Firestore (NoSQL Document-based)
 - **Storage:** Firebase Cloud Storage (Media & Dokumen Foto)
 - **Serverless Logic & Notification:** Firebase Cloud Functions & Cloud Messaging (FCM)
-- **Location Service:** Geohashing Algorithm via Client Extension
-  ImplementasiDomain Driven Design (DDD) digunakan untuk memisahkan logika bisnis inti dari detail implementasi teknis, memastikan modularitas dan maintainabilitas kode yang tinggi.
+- **Location Service:** Geohashing Algorithm via Client Extension + Geolocator package
+- **Domain Driven Design (DDD):** Dipakai untuk memisahkan logika bisnis inti dari detail implementasi teknis, memastikan modularitas dan maintainabilitas kode yang tinggi.
+
+## 2.1 Permissions & Privacy
+
+### Location Permission
+
+Aplikasi LaporIn **meminta izin akses lokasi** (location permission) dari pengguna pada momen-momen berikut:
+
+- **Saat pertama kali membuka aplikasi** (setelah onboarding): Dipakai untuk menentukan district/wilayah pengguna secara otomatis dan menyesuaikan konten map dan watch zones.
+- **Saat membuat laporan baru (Citizen)**: Lokasi GPS diperlukan untuk menentukan koordinat otomatis titik kerusakan yang dilaporkan. Pengguna juga dapat menyesuaikan pin secara manual.
+- **Saat membuka halaman Peta/Map**: Lokasi dipakai untuk centering peta pada posisi user.
+
+**Catatan:**
+
+- Izin lokasi bersifat **opsional** — pengguna dapat menolak, tetapi fitur yang bergantung pada lokasi (auto-fill koordinat laporan, centering map) akan memerlukan input manual.
+- Data lokasi **tidak** disimpan ke Firestore kecuali saat membuat laporan atau mengatur watch zone.
+- Aplikasi menampilkan **permission rationale** sebelum meminta izin (ditampilkan native OS).
+
+| Permission             | Platform      | When Requested                 | consequence if Denied                                        |
+| ---------------------- | ------------- | ------------------------------ | ------------------------------------------------------------ |
+| Location (Approximate) | Android / iOS | First launch / Report creation | District auto-detect disabled; manual coordinate entry       |
+| Location (Precise/GPS) | Android / iOS | Report creation                | Pin auto-placement disabled; manual map tap required         |
+| Camera                 | Android / iOS | Report creation                | Photo capture disabled; must pick from gallery               |
+| Notification           | Android / iOS | After login                    | Push notifications disabled; in-app notification center only |
 
 ## 3. Alur Hidup Laporan (End-to-End Report Lifecycle)
 
