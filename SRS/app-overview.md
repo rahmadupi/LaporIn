@@ -98,6 +98,16 @@ Warga dapat mengajukan banding terhadap penolakan laporan:
 - Asumsi bahwa pengguna memiliki akses ke perangkat mobile dengan koneksi internet yang stabil.
 - Ketergantungan pada layanan Firebase untuk autentikasi, database, penyimpanan, dan fungsi serverless.
 
+## 8. Engineering & Deployment
+
+Dokumen SRS engineering (version control, CI/CD, build, release, deployment):
+
+- [Git Workflows — Build, Release, and Deployment](./engineering/git_workflows.md)
+  — branching strategy (GitFlow), versioning (semver), CI pipeline (GitHub Actions),
+  CD pipeline (tag-based deployment ke Play Store, App Store, Firebase Hosting),
+  hotfix workflow, secrets management, branch protection rules, dan acceptance
+  criteria workflow.
+
 ## 8. Kesimpulan
 
 LaporIn bertujuan untuk meningkatkan efisiensi penanganan laporan infrastruktur publik dengan memanfaatkan teknologi serverless dan arsitektur modern. Dengan alur hidup laporan yang jelas dan sistem status yang transparan, LaporIn diharapkan dapat mempercepat proses perbaikan dan meningkatkan kepuasan masyarakat terhadap layanan publik.

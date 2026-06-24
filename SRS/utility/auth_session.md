@@ -12,8 +12,22 @@ This module governs how the user's active session is maintained securely across 
 ## 3. Security Rules
 
 - **Token Refresh:** Handled automatically by the Firebase Auth SDK. No custom token rotation logic is required in the Flutter client.
-- **Account Deactivation:** If an Admin sets a user's `status` to `"banned"` in Firestore, a Cloud Function must revoke their refresh tokens. The `authStateChanges()` stream will detect this and immediately push the user back to the `/login` route.
+- **Account Deactivation:** If an Admin sets a user's `status` to `"banned"` in Firestore, a Cloud Function must revoke their refresh tokens. The `authStateChanges()` stream will detect this and immediately push the user back to the `/login` route. The login screen must surface an informational banner (with ban reason and timestamp) explaining that the account cannot sign in, but the form must remain partially usable: the user can still read the form, navigate to **Register** to create a new account with a different email, or read the contact-admin guidance. Only the **Masuk** (sign-in) button and the **Lupa password?** link are disabled for banned accounts.
 - **Pending Officer Gate:** If `status` is `"pending"` (officer awaiting approval), the client must block access to the officer workspace and show an "awaiting approval" message even though `authStateChanges()` reports a valid session.
+- **Pending Verification Gate:** If `status` is `"pending_verification"` (email link not yet verified), the client must reject login and prompt the user to verify their email.
+- **Dormant Account Gate (`inActive`):** If `status` is `"inActive"` (auto-flagged by the system due to prolonged inactivity), the client must reject login with a dedicated message and surface a re-activation action. The user can re-activate the account by tapping "Aktifkan Kembali" on the login screen, which sets the status back to `"active"`. Admins can also manually revert a dormant account to `"active"` from the user-moderation screen. The user's data and reports are preserved across the dormant ↔ active cycle.
+- **Status transition table:**
+
+  | From → To                          | Trigger                               | Who can do it          |
+  | ---------------------------------- | ------------------------------------- | ---------------------- |
+  | `pending_verification` → `active`  | Email verification link clicked       | System (after sign-in) |
+  | `pending_verification` → `pending` | Email verified, role is `officer`     | System (after sign-in) |
+  | `pending` → `active`               | Admin approves officer                | Admin                  |
+  | `pending` → `banned`               | Admin rejects officer                 | Admin                  |
+  | `active` → `banned`                | Admin bans user                       | Admin                  |
+  | `active` → `inActive`              | Scheduled Cloud Function (dormancy)   | System (scheduled job) |
+  | `inActive` → `active`              | User taps "Aktifkan Kembali" OR admin | User / Admin           |
+  | `banned` → `active`                | Admin unbans user                     | Admin                  |
 
 ## 4. Acceptance Criteria
 

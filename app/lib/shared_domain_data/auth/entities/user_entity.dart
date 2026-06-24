@@ -2,6 +2,9 @@
 /// - active: akun operasional, bisa login
 /// - pending: officer menunggu approval admin, belum bisa login
 /// - pendingVerification: baru register, email belum diverifikasi
+/// - inActive: akun dormant (auto-flagged sistem karena tidak aktif lama);
+///             user bisa self re-activate dari halaman login, atau admin
+///             bisa re-activate manual
 /// - banned: diblokir, tidak bisa login
 
 /// Entity untuk data user sesuai SRS data-model.md (/users/{uid}).
@@ -11,6 +14,7 @@ enum UserStatus {
   active,
   pending,
   pendingVerification,
+  inActive,
   banned;
 
   String get value {
@@ -21,6 +25,8 @@ enum UserStatus {
         return 'pending';
       case UserStatus.pendingVerification:
         return 'pending_verification';
+      case UserStatus.inActive:
+        return 'inActive';
       case UserStatus.banned:
         return 'banned';
     }
@@ -34,6 +40,9 @@ enum UserStatus {
         return UserStatus.pending;
       case 'pending_verification':
         return UserStatus.pendingVerification;
+      case 'inActive':
+      case 'inactive':
+        return UserStatus.inActive;
       case 'banned':
         return UserStatus.banned;
       default:
@@ -87,6 +96,13 @@ class UserEntity {
 
   /// True jika user dibanned.
   bool get isBanned => status == 'banned';
+
+  /// True jika akun dormant (auto-flagged karena tidak aktif lama).
+  /// User dapat self re-activate atau di-reactivate admin.
+  bool get isInactive => status == 'inActive';
+
+  /// Alias untuk [isInactive] — lebih deskriptif di konteks UI.
+  bool get isDormant => status == 'inActive';
 
   /// True jika user boleh login (active + bukan pending officer).
   bool get canLogin => status == 'active' && !isPendingOfficer;

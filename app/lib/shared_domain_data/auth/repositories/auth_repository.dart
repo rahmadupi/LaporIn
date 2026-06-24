@@ -97,7 +97,15 @@ class AuthRepository {
 
       if (entity.isBanned) {
         await _auth.signOut();
-        throw const AuthFailure('Akun Anda telah diblokir. Hubungi Admin.');
+        throw AuthFailure.banned(
+          reason: entity.banReason,
+          bannedAt: entity.bannedAt,
+        );
+      }
+
+      if (entity.isInactive) {
+        await _auth.signOut();
+        throw AuthFailure.inactive();
       }
 
       return entity;
@@ -180,6 +188,44 @@ class AuthRepository {
     }
   }
 
+  /// Re-aktifkan akun dormant (`status: "inActive"` → `"active"`).
+  ///
+  /// Dipanggil dari tombol "Aktifkan Kembali" di halaman login, atau
+  /// oleh admin dari halaman user-moderation. Hanya dilakukan untuk akun
+  /// yang saat ini ber-status `inActive`; status lain akan diabaikan
+  /// (tidak akan meniban status `banned` dll.).
+  Future<UserEntity> reactivateDormantAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AuthFailure(
+        'Sesi login tidak ditemukan. Silakan login ulang.',
+        code: AuthErrorCode.userNotFound,
+      );
+    }
+
+    // Penting: baca dari server (bukan cache) untuk memastikan status
+    // terkini. Tanpa ini, akun yang baru di-flag dormant mungkin masih
+    // terbaca sebagai "active" di cache lokal.
+    final entity = await _fetchUserEntity(user.uid, forceRefresh: true);
+    if (entity == null) {
+      throw const AuthFailure(
+        'Profil pengguna tidak ditemukan.',
+        code: AuthErrorCode.userProfileNotFound,
+      );
+    }
+
+    if (!entity.isInactive) {
+      // Bukan dormant - tidak melakukan perubahan. Kembalikan entity apa adanya.
+      return entity;
+    }
+
+    await _db.collection('users').doc(user.uid).update({
+      'status': UserStatus.active.value,
+    });
+
+    return entity.copyWith(status: UserStatus.active.value);
+  }
+
   /// Logout dan menghapus session. Tunggu sebentar untuk memastikan
   /// auth state telah update di semua provider sebelum return.
   Future<void> signOut() async {
@@ -208,6 +254,19 @@ class AuthRepository {
   /// sudah terverifikasi dan kita bisa ambil nama dari displayName/profile.
   Future<UserEntity?> _recoverUserProfile(User user) async {
     try {
+      // Defensive: Selalu baca dari server untuk konfirmasi dokumen benar-benar
+      // tidak ada. Cache lokal bisa kosong/stale sehingga _fetchUserEntity
+      // sebelumnya mengembalikan null meskipun profil sebenarnya sudah ada.
+      // Tanpa pengecekan ini, kita bisa menimpa akun admin dengan profil
+      // default (citizen + nama email).
+      final existing = await _db
+          .collection('users')
+          .doc(user.uid)
+          .get(const GetOptions(source: Source.server));
+      if (existing.exists) {
+        return UserModel.fromFirestore(existing);
+      }
+
       // Default ke citizen role untuk safety
       final displayName =
           user.displayName ?? user.email?.split('@').first ?? 'User';
@@ -224,11 +283,13 @@ class AuthRepository {
         createdAt: DateTime.now(),
       );
 
-      // Buat dokumen dengan merge untuk tidak overwrite jika sudah ada
+      // Hanya tulis jika memang belum ada dokumen (merge aman sebagai
+      // jaring pengaman tambahan, walaupun pengecekan di atas seharusnya
+      // sudah cukup).
       await _db
           .collection('users')
           .doc(user.uid)
-          .set(UserModel.toFirestore(entity), SetOptions(merge: false));
+          .set(UserModel.toFirestore(entity), SetOptions(merge: true));
 
       return entity;
     } catch (_) {
@@ -241,10 +302,16 @@ class AuthRepository {
     bool forceRefresh = false,
   }) async {
     try {
-      final doc = await _db
-          .collection('users')
-          .doc(uid)
-          .get(GetOptions(source: forceRefresh ? Source.server : Source.cache));
+      // Penting: gunakan default source (cache-first, server-fallback) bukan
+      // Source.cache saja. Jika cache kosong / stale, read sebelumnya akan
+      // mengembalikan null dan memicu _recoverUserProfile yang me-replace
+      // dokumen user asli dengan profil default (citizen + nama email).
+      final doc = forceRefresh
+          ? await _db
+                .collection('users')
+                .doc(uid)
+                .get(const GetOptions(source: Source.server))
+          : await _db.collection('users').doc(uid).get();
       if (!doc.exists) return null;
       return UserModel.fromFirestore(doc);
     } catch (_) {

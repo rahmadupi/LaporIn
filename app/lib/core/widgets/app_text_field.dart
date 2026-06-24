@@ -15,6 +15,7 @@ class AppTextField extends StatelessWidget {
     this.suffixIcon,
     this.validator,
     this.textInputAction,
+    this.enabled = true,
   });
 
   final String label;
@@ -26,6 +27,7 @@ class AppTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
   final TextInputAction? textInputAction;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -34,10 +36,10 @@ class AppTextField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
+            color: enabled ? AppColors.textPrimary : AppColors.textSecondary,
           ),
         ),
         const SizedBox(height: 8),
@@ -47,6 +49,7 @@ class AppTextField extends StatelessWidget {
           obscureText: obscureText,
           textInputAction: textInputAction,
           validator: validator,
+          enabled: enabled,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20) : null,
