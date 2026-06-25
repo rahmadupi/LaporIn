@@ -66,5 +66,16 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Officer proof-upload permissions (M3). -->
+	<key>NSCameraUsageDescription</key>
+	<string>Kami memerlukan akses kamera untuk mengambil foto bukti pengerjaan laporan.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Kami memerlukan akses galeri untuk memilih foto bukti pengerjaan laporan.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Kami memerlukan akses lokasi untuk menandai koordinat bukti pengerjaan.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Kami memerlukan akses mikrofon untuk input catatan pengerjaan lewat suara.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Kami memerlukan akses pengenalan suara untuk mengubah catatan suara menjadi teks.</string>
 </dict>
 </plist>

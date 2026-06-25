@@ -43,6 +43,58 @@ class ReportRepository {
         );
   }
 
+  /// Stream laporan yang ditugaskan ke officer tertentu. Default ke
+  /// status aktif (`dispatched` + `in_progress`); parameter `statuses`
+  /// untuk override (mis. Riwayat → `resolved` + `rejected`).
+  /// Digunakan oleh Officer Home (OFC-002) dan Officer History (OFC-009).
+  Stream<List<ReportEntity>> streamAssignedToOfficer(
+    String officerId, {
+    List<ReportStatus> statuses = const [
+      ReportStatus.dispatched,
+      ReportStatus.inProgress,
+    ],
+  }) {
+    return _reports
+        .where('assignedOfficerId', isEqualTo: officerId)
+        .where('status', whereIn: statuses.map((s) => s.value).toList())
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snap) => snap.docs.map((d) => ReportModel.fromFirestore(d)).toList(),
+        );
+  }
+
+  /// Buat laporan darurat dari officer (OFC-012). Field-field yang
+  /// ditulis mengikuti ReportModel.toFirestore agar konsisten dengan
+  /// laporan citizen.
+  Future<String> createEmergencyReport({
+    required String reporterId,
+    required String title,
+    String? description,
+    required double latitude,
+    required double longitude,
+    ReportUrgency urgency = ReportUrgency.high,
+  }) async {
+    final docRef = _reports.doc();
+    final now = DateTime.now();
+    final entity = ReportEntity(
+      reportId: docRef.id,
+      reporterId: reporterId,
+      isAnonymous: false,
+      title: title,
+      description: description ?? '',
+      urgencyLevel: urgency,
+      status: ReportStatus.pending,
+      latitude: latitude,
+      longitude: longitude,
+      addressDetail: 'Dilaporkan oleh Petugas Lapangan',
+      createdAt: now,
+      updatedAt: now,
+    );
+    await docRef.set(ReportModel.toFirestore(entity));
+    return docRef.id;
+  }
+
   /// Count laporan dengan filter tertentu (untuk stat cards & priority alerts).
   Future<int> countReports({
     required List<String> statuses,
@@ -146,6 +198,26 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
 /// Stream provider: seluruh laporan.
 final allReportsStreamProvider = StreamProvider<List<ReportEntity>>((ref) {
   return ref.watch(reportRepositoryProvider).streamAll();
+});
+
+/// Stream provider: laporan yang ditugaskan ke officer yang sedang
+/// login. `null` saat belum login. Memakai `streamAssignedToOfficer`
+/// dengan default status `dispatched` + `in_progress` (OFC-002).
+final myAssignedTasksProvider =
+    StreamProvider.family<List<ReportEntity>, String>((ref, officerId) {
+  return ref
+      .watch(reportRepositoryProvider)
+      .streamAssignedToOfficer(officerId);
+});
+
+/// Stream provider: riwayat tugas officer (resolved + rejected).
+/// Dipakai oleh Officer History (OFC-009) di M4.
+final myOfficerHistoryProvider =
+    StreamProvider.family<List<ReportEntity>, String>((ref, officerId) {
+  return ref.watch(reportRepositoryProvider).streamAssignedToOfficer(
+        officerId,
+        statuses: const [ReportStatus.resolved, ReportStatus.rejected],
+      );
 });
 
 /// Future provider: priority alert counts.

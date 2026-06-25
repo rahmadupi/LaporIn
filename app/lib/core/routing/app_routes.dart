@@ -17,6 +17,12 @@ class AppRoutes {
   static const String officerNotifications = '/officer/notifications';
   static const String adminNotifications = '/admin/notifications';
 
+  // Officer sub-routes (M2/M3: detail tugas + unggah bukti).
+  static const String officerTaskDetail = '/officer/task';
+  static String officerTaskDetailFor(String taskId) => '/officer/task/$taskId';
+  static const String officerProof = '/officer/proof';
+  static String officerProofFor(String taskId) => '/officer/proof/$taskId';
+
   // Admin sub-routes.
   static const String adminPetugas = '/admin/petugas';
   static String adminPetugasDetail(String uid) => '/admin/petugas/$uid';

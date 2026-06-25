@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +13,9 @@ import '../../shared_domain_data/auth/providers/auth_providers.dart';
 import '../../workspaces/admin_app/screens/admin_shell_screen.dart';
 import '../../workspaces/admin_app/screens/officer_profile_view_screen.dart';
 import '../../workspaces/citizen_app/screens/citizen_shell_screen.dart';
+import '../../workspaces/officer_app/screens/officer_proof_screen.dart';
 import '../../workspaces/officer_app/screens/officer_shell_screen.dart';
+import '../../workspaces/officer_app/screens/officer_task_detail_screen.dart';
 import 'app_routes.dart';
 
 /// GoRouter dengan auth guard (Riverpod).
@@ -95,6 +98,34 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.officerHome,
         builder: (context, state) => const OfficerShellScreen(),
+        routes: [
+          // M2: detail satu tugas yang ditugaskan ke officer.
+          // Map<String, dynamic> taskData dikirim via `extra` agar tidak
+          // perlu re-read dari Firestore; fallback fetch by id.
+          GoRoute(
+            path: 'task/:taskId',
+            builder: (context, state) {
+              final taskId = state.pathParameters['taskId'] ?? '';
+              final extra = state.extra;
+              if (extra is Map<String, dynamic>) {
+                return OfficerTaskDetailScreen(taskId: taskId, taskData: extra);
+              }
+              return _TaskDetailLoader(taskId: taskId);
+            },
+          ),
+          // M3: layar unggah bukti (ImgBB + Hive + GPS + voice).
+          // Map<String, dynamic> taskData dikirim via `extra`.
+          GoRoute(
+            path: 'proof/:taskId',
+            builder: (context, state) {
+              final taskId = state.pathParameters['taskId'] ?? '';
+              final extra = state.extra;
+              final taskData =
+                  extra is Map<String, dynamic> ? extra : const <String, dynamic>{};
+              return OfficerProofScreen(taskId: taskId, taskData: taskData);
+            },
+          ),
+        ],
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
@@ -143,6 +174,42 @@ class _OfficerProfileLoader extends ConsumerWidget {
         appBar: AppBar(title: const Text('Profil Petugas')),
         body: Center(child: Text('Error: $e')),
       ),
+    );
+  }
+}
+
+/// Fallback loader untuk OfficerTaskDetailScreen ketika navigasi
+/// tidak membawa `extra: Map<String, dynamic>` (mis. dari deep link).
+class _TaskDetailLoader extends ConsumerWidget {
+  const _TaskDetailLoader({required this.taskId});
+  final String taskId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      future: FirebaseFirestore.instance
+          .collection('reports')
+          .doc(taskId)
+          .get(),
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snap.hasError || !snap.hasData || !snap.data!.exists) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Detail Tugas')),
+            body: Center(
+              child: Text('Tugas tidak ditemukan: ${snap.error ?? taskId}'),
+            ),
+          );
+        }
+        return OfficerTaskDetailScreen(
+          taskId: taskId,
+          taskData: snap.data!.data() ?? const <String, dynamic>{},
+        );
+      },
     );
   }
 }
