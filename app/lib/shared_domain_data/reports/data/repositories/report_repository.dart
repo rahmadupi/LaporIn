@@ -109,56 +109,40 @@ class ReportRepository {
         );
   }
 
-  /// Buat laporan baru dari citizen (CIT-001 + CIT-002). Field ditulis
-  /// mentah via Map karena `ReportModel.toFirestore` belum mendukung
-  /// `addressDetails` (admin/analytics) — kita tulis via raw map agar
-  /// sesuai [SRS/data-model.md §3.2].
+  /// Buat laporan baru dari citizen (CIT-001 + CIT-002).
+  /// Skema baru: `category` (slug), `severity`, `photoUrls`,
+  /// `address` (flat), `geo` (GeoPoint).
   Future<String> createCitizenReport({
     required String reporterId,
-    required String title,
     required String description,
-    required String categoryId,
-    required ReportUrgency urgencyLevel,
+    required ReportCategory category,
+    required ReportSeverity severity,
     required bool isAnonymous,
     required String imageUrl,
-    String? addressDetail,
-    String? province,
-    String? city,
-    String? district,
+    required String address,
     required double latitude,
     required double longitude,
-    String? geohash,
+    String? displayId,
   }) async {
     final docRef = _reports.doc();
     final now = DateTime.now();
     final entity = ReportEntity(
       reportId: docRef.id,
+      displayId: displayId ?? docRef.id,
       reporterId: reporterId,
       isAnonymous: isAnonymous,
-      title: title,
       description: description,
-      categoryId: categoryId,
-      urgencyLevel: urgencyLevel,
+      category: category,
+      severity: severity,
       status: ReportStatus.pending,
-      imageUrl: imageUrl,
-      addressDetail: addressDetail,
-      province: province,
-      city: city,
-      district: district,
+      photoUrls: [imageUrl],
       latitude: latitude,
       longitude: longitude,
-      geohash: geohash,
+      address: address,
       createdAt: now,
       updatedAt: now,
     );
-    await docRef.set({
-      ...ReportModel.toFirestore(entity),
-      'addressDetails': {
-        if (province != null) 'province': province,
-        if (city != null) 'city': city,
-        if (district != null) 'district': district,
-      },
-    });
+    await docRef.set(ReportModel.toFirestore(entity));
     return docRef.id;
   }
 
@@ -221,16 +205,14 @@ class ReportRepository {
         .map((snap) => snap.docs.map((d) => d.data()).toList());
   }
 
-  /// Buat laporan darurat dari officer (OFC-012). Field-field yang
-  /// ditulis mengikuti ReportModel.toFirestore agar konsisten dengan
-  /// laporan citizen.
+  /// Buat laporan darurat dari officer (OFC-012). Skema baru:
+  /// `severity`, `address`, `geo`.
   Future<String> createEmergencyReport({
     required String reporterId,
-    required String title,
     String? description,
     required double latitude,
     required double longitude,
-    ReportUrgency urgency = ReportUrgency.high,
+    ReportSeverity severity = ReportSeverity.high,
   }) async {
     final docRef = _reports.doc();
     final now = DateTime.now();
@@ -238,13 +220,12 @@ class ReportRepository {
       reportId: docRef.id,
       reporterId: reporterId,
       isAnonymous: false,
-      title: title,
       description: description ?? '',
-      urgencyLevel: urgency,
+      severity: severity,
       status: ReportStatus.pending,
       latitude: latitude,
       longitude: longitude,
-      addressDetail: 'Dilaporkan oleh Petugas Lapangan',
+      address: 'Dilaporkan oleh Petugas Lapangan',
       createdAt: now,
       updatedAt: now,
     );
@@ -257,7 +238,7 @@ class ReportRepository {
     required List<String> statuses,
     DateTime? createdAfter,
     DateTime? createdBefore,
-    ReportUrgency? urgency,
+    ReportSeverity? severity,
   }) async {
     Query<Map<String, dynamic>> query = _reports;
     if (createdAfter != null) {
@@ -272,8 +253,8 @@ class ReportRepository {
         isLessThan: Timestamp.fromDate(createdBefore),
       );
     }
-    if (urgency != null) {
-      query = query.where('urgencyLevel', isEqualTo: urgency.value);
+    if (severity != null) {
+      query = query.where('severity', isEqualTo: severity.value);
     }
     if (statuses.isNotEmpty) {
       query = query.where('status', whereIn: statuses);
@@ -282,40 +263,40 @@ class ReportRepository {
     return snap.count ?? 0;
   }
 
-  /// Count KRITIS: pending + critical urgency + older than [olderThan].
+  /// Count KRITIS: pending + critical severity + older than [olderThan].
   Future<int> countKritis(DateTime olderThan) {
     return countReports(
       statuses: const ['pending'],
-      urgency: ReportUrgency.critical,
+      severity: ReportSeverity.critical,
       createdBefore: olderThan,
     );
   }
 
-  /// Count TINGGI: in_progress + high urgency + dispatchedAt older than [olderThan].
+  /// Count TINGGI: in_progress + high severity + dispatchedAt older than [olderThan].
   Future<int> countTinggi(DateTime olderThan) async {
     final snap = await _reports
         .where('status', isEqualTo: ReportStatus.inProgress.value)
-        .where('urgencyLevel', isEqualTo: ReportUrgency.high.value)
+        .where('severity', isEqualTo: ReportSeverity.high.value)
         .where('dispatchedAt', isLessThan: Timestamp.fromDate(olderThan))
         .count()
         .get();
     return snap.count ?? 0;
   }
 
-  /// Count SEDANG: in_review + medium urgency + updatedAt older than [olderThan].
+  /// Count SEDANG: in_review + medium severity + updatedAt older than [olderThan].
   Future<int> countSedang(DateTime olderThan) {
     return countReports(
       statuses: const ['in_review'],
-      urgency: ReportUrgency.medium,
+      severity: ReportSeverity.medium,
       createdBefore: olderThan,
     );
   }
 
-  /// Count RENDAH: pending + low urgency + createdAt older than [olderThan].
+  /// Count RENDAH: pending + low severity + createdAt older than [olderThan].
   Future<int> countRendah(DateTime olderThan) {
     return countReports(
       statuses: const ['pending'],
-      urgency: ReportUrgency.low,
+      severity: ReportSeverity.low,
       createdBefore: olderThan,
     );
   }

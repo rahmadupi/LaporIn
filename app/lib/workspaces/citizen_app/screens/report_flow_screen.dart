@@ -206,13 +206,14 @@ class _ReportFlowScreenState extends ConsumerState<ReportFlowScreen> {
           .read(reportRepositoryProvider)
           .createCitizenReport(
             reporterId: user.uid,
-            title: _titleController.text.trim(),
-            description: _descriptionController.text.trim(),
-            categoryId: _selectedCategoryId!,
-            urgencyLevel: _urgency,
+            description: _descriptionController.text.trim().isNotEmpty
+                ? _descriptionController.text.trim()
+                : _titleController.text.trim(),
+            category: ReportCategory.fromSlug(_selectedCategoryId),
+            severity: _urgency,
             isAnonymous: _isAnonymous,
             imageUrl: imageUrl,
-            addressDetail: 'Lokasi GPS',
+            address: 'Lokasi GPS',
             latitude: _position!.latitude,
             longitude: _position!.longitude,
           );

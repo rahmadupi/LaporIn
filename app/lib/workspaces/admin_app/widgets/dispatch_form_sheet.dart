@@ -357,7 +357,7 @@ class _ReportSummary extends StatelessWidget {
             ),
           const SizedBox(height: 4),
           Text(
-            'Urgensi: ${report.urgencyLevel.label} • Status: ${report.status.label}',
+            'Urgensi: ${report.severity.label} • Status: ${report.status.label}',
             style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
           ),
         ],

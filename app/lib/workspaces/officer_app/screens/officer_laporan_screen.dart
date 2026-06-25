@@ -310,8 +310,8 @@ class _ReportRow extends ConsumerWidget {
                               color: _statusColor(report.status),
                             ),
                             _Pill(
-                              label: report.urgencyLevel.label,
-                              color: _urgencyColor(report.urgencyLevel),
+                              label: report.severity.label,
+                              color: _urgencyColor(report.severity),
                               outlined: true,
                             ),
                             if (report.isAnonymous)
@@ -374,15 +374,15 @@ class _ReportRow extends ConsumerWidget {
     }
   }
 
-  Color _urgencyColor(ReportUrgency u) {
+  Color _urgencyColor(ReportSeverity u) {
     switch (u) {
-      case ReportUrgency.critical:
+      case ReportSeverity.critical:
         return const Color(0xFFDC2626);
-      case ReportUrgency.high:
+      case ReportSeverity.high:
         return const Color(0xFFEA580C);
-      case ReportUrgency.medium:
+      case ReportSeverity.medium:
         return const Color(0xFFCA8A04);
-      case ReportUrgency.low:
+      case ReportSeverity.low:
         return const Color(0xFF16A34A);
     }
   }

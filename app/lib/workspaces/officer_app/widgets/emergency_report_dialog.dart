@@ -126,11 +126,12 @@ class _EmergencyReportDialogState extends ConsumerState<EmergencyReportDialog> {
           .read(reportRepositoryProvider)
           .createEmergencyReport(
             reporterId: user.uid,
-            title: _titleController.text.trim(),
-            description: _descriptionController.text.trim(),
+            description: _descriptionController.text.trim().isNotEmpty
+                ? _descriptionController.text.trim()
+                : _titleController.text.trim(),
             latitude: _position!.latitude,
             longitude: _position!.longitude,
-            urgency: ReportUrgency.high,
+            severity: ReportSeverity.high,
           );
       if (!mounted) return;
       Navigator.of(context).pop(true);
