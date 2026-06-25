@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared_domain_data/reports/data/repositories/report_repository.dart';
 import '../../../shared_domain_data/reports/domain/entities/report_entity.dart';
+import '../providers/admin_navigation_providers.dart';
 import '../widgets/dialogs/reject_report_dialog.dart';
 
 /// Filter chips untuk Moderasi → Laporan.
@@ -59,17 +60,52 @@ class _AdminLaporanListScreenState
     extends ConsumerState<AdminLaporanListScreen> {
   late LaporanFilter _filter;
   ReportUrgency? _urgencyFilter;
+  int _lastNonce = -1;
 
   @override
   void initState() {
     super.initState();
-    _filter = widget.initialFilter ?? LaporanFilter.semua;
-    _urgencyFilter = widget.initialUrgency;
+    // Pull initial values from the providers (set by AdminShellScreen when
+    // the dashboard drill-in fires). Widget params take precedence.
+    final provFilterLabel = ref.read(laporanFilterProvider);
+    _filter = _parseFilterLabel(widget.initialFilter?.label ?? provFilterLabel);
+    final provUrgency = ref.read(laporanUrgencyFilterProvider);
+    _urgencyFilter = widget.initialUrgency ??
+        (provUrgency != null ? ReportUrgency.fromString(provUrgency) : null);
+    _lastNonce = ref.read(laporanDrillInNonceProvider);
+  }
+
+  /// Map chip label string ke enum.
+  LaporanFilter _parseFilterLabel(String label) {
+    return LaporanFilter.values.firstWhere(
+      (f) => f.label == label,
+      orElse: () => LaporanFilter.semua,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // React to dashboard drill-in by re-applying the providers.
+    final nonce = ref.watch(laporanDrillInNonceProvider);
+    if (nonce != _lastNonce) {
+      _lastNonce = nonce;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final label = ref.read(laporanFilterProvider);
+        final urg = ref.read(laporanUrgencyFilterProvider);
+        setState(() {
+          _filter = _parseFilterLabel(label);
+          _urgencyFilter = urg != null ? ReportUrgency.fromString(urg) : null;
+        });
+      });
+    }
+
     final reportsAsync = ref.watch(allReportsStreamProvider);
+    // Read the location filter providers here so the build re-runs whenever
+    // any of them change (the dropdowns update these on selection).
+    final provinceFilter = ref.watch(laporanProvinceFilterProvider);
+    final cityFilter = ref.watch(laporanCityFilterProvider);
+    final districtFilter = ref.watch(laporanDistrictFilterProvider);
 
     return Column(
       children: [
@@ -116,6 +152,9 @@ class _AdminLaporanListScreenState
           ),
         ),
 
+        // ===== Location filter (Province → City → District) =====
+        _LocationFilterBar(reports: reportsAsync.valueOrNull ?? []),
+
         const SizedBox(height: 4),
 
         // List
@@ -126,6 +165,18 @@ class _AdminLaporanListScreenState
                 if (!_filter.matches(r.status)) return false;
                 if (_urgencyFilter != null &&
                     r.urgencyLevel != _urgencyFilter) {
+                  return false;
+                }
+                if (provinceFilter != null &&
+                    (r.province == null || r.province != provinceFilter)) {
+                  return false;
+                }
+                if (cityFilter != null &&
+                    (r.city == null || r.city != cityFilter)) {
+                  return false;
+                }
+                if (districtFilter != null &&
+                    (r.district == null || r.district != districtFilter)) {
                   return false;
                 }
                 return true;
@@ -457,6 +508,187 @@ class _Pill extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: outlined ? color : Colors.white,
+        ),
+      ),
+    );
+  }
+}
+
+/// Baris filter lokasi 3-level: Provinsi → Kota → Kecamatan/Desa.
+///
+/// Dropdown options di-populate dari daftar laporan yang tersedia.
+/// Setiap perubahan dropdown menulis ke provider yang sesuai dan
+/// me-reset child dropdown (mis. ganti provinsi → reset kota & desa).
+class _LocationFilterBar extends ConsumerWidget {
+  const _LocationFilterBar({required this.reports});
+  final List<ReportEntity> reports;
+
+  /// Kumpulkan nilai unik untuk satu field, exclude null, sort alfabetis.
+  List<String> _uniqueValues(String Function(ReportEntity) pick) {
+    final set = <String>{};
+    for (final r in reports) {
+      final v = pick(r);
+      if (v.isNotEmpty) set.add(v);
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final province = ref.watch(laporanProvinceFilterProvider);
+    final city = ref.watch(laporanCityFilterProvider);
+    final district = ref.watch(laporanDistrictFilterProvider);
+
+    // Provinces — selalu semua provinsi yang ada di laporan.
+    final provinces = _uniqueValues((r) => r.province ?? '');
+
+    // Cities — difilter berdasarkan province yang dipilih (jika ada).
+    final cities = _uniqueValues(
+      (r) => (province == null || r.province == province) ? (r.city ?? '') : '',
+    );
+
+    // Districts — difilter berdasarkan province + city yang dipilih.
+    final districts = _uniqueValues(
+      (r) =>
+          (province == null || r.province == province) &&
+                  (city == null || r.city == city)
+              ? (r.district ?? '')
+              : '',
+    );
+
+    final hasAnyFilter = province != null || city != null || district != null;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined,
+                  size: 16, color: Colors.grey.shade700),
+              const SizedBox(width: 4),
+              Text(
+                'Lokasi',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const Spacer(),
+              if (hasAnyFilter)
+                TextButton(
+                  onPressed: () {
+                    ref.read(laporanProvinceFilterProvider.notifier).state =
+                        null;
+                    ref.read(laporanCityFilterProvider.notifier).state = null;
+                    ref.read(laporanDistrictFilterProvider.notifier).state =
+                        null;
+                    ref.read(laporanLocationResetNonceProvider.notifier).state++;
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    minimumSize: const Size(0, 28),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: const Text('Reset', style: TextStyle(fontSize: 11)),
+                ),
+            ],
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: _LocationDropdown<String?>(
+                  hint: 'Provinsi',
+                  value: province,
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Semua Provinsi')),
+                    for (final p in provinces)
+                      DropdownMenuItem(value: p, child: Text(p)),
+                  ],
+                  onChanged: (v) {
+                    ref.read(laporanProvinceFilterProvider.notifier).state = v;
+                    // Reset child dropdowns.
+                    ref.read(laporanCityFilterProvider.notifier).state = null;
+                    ref.read(laporanDistrictFilterProvider.notifier).state =
+                        null;
+                  },
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _LocationDropdown<String?>(
+                  hint: 'Kota',
+                  value: city,
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Semua Kota')),
+                    for (final c in cities)
+                      DropdownMenuItem(value: c, child: Text(c)),
+                  ],
+                  onChanged: (v) {
+                    ref.read(laporanCityFilterProvider.notifier).state = v;
+                    ref.read(laporanDistrictFilterProvider.notifier).state =
+                        null;
+                  },
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _LocationDropdown<String?>(
+                  hint: 'Desa',
+                  value: district,
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Semua Desa')),
+                    for (final d in districts)
+                      DropdownMenuItem(value: d, child: Text(d)),
+                  ],
+                  onChanged: (v) {
+                    ref.read(laporanDistrictFilterProvider.notifier).state = v;
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact dropdown used in [_LocationFilterBar].
+class _LocationDropdown<T> extends StatelessWidget {
+  const _LocationDropdown({
+    required this.hint,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  final String hint;
+  final T value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          hint: Text(hint, style: const TextStyle(fontSize: 12)),
+          isExpanded: true,
+          icon: const Icon(Icons.arrow_drop_down, size: 18),
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
+          items: items,
+          onChanged: onChanged,
         ),
       ),
     );

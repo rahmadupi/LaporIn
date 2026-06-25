@@ -47,8 +47,21 @@ class RoleScaffoldState extends State<RoleScaffold> {
     }
   }
 
+  /// Switch ke tab dengan index tertentu. Aman dipanggil dari luar (mis.
+  /// Riverpod listener) — clamp ke range valid dan hanya rebuild jika
+  /// index berubah.
+  void switchToTab(int index) {
+    final clamped = index.clamp(0, widget.tabs.length - 1);
+    if (clamped != _currentIndex) {
+      setState(() => _currentIndex = clamped);
+    }
+  }
+
   /// Getter untuk cek apakah di tab pertama.
   bool get isOnFirstTab => _currentIndex == 0;
+
+  /// Getter untuk current tab index (untuk cross-widget communication).
+  int get currentIndex => _currentIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +146,7 @@ class RoleScaffoldState extends State<RoleScaffold> {
                     //     letterSpacing: 1.2,
                     //   ),
                     // ),
-                    const SizedBox(height: 4),
+                    // const SizedBox(height: 4),
                     Text(
                       widget.userName.isNotEmpty
                           ? widget.userName

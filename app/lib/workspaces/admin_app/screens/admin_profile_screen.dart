@@ -41,6 +41,10 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
       } else {
         await repo.updateFcmToken(null);
       }
+      // Refresh currentUserProvider agar `isNotifOn` (yang membaca
+      // `user.fcmToken`) ikut berubah tanpa restart aplikasi. Tanpa ini,
+      // switch tetap menampilkan state lama sampai proses auth berikutnya.
+      await ref.read(currentUserProvider.notifier).refresh();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

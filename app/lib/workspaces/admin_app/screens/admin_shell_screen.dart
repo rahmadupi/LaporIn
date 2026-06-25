@@ -7,12 +7,14 @@ import 'package:laporin/shared/ui/role_scaffold.dart';
 import 'package:laporin/shared/ui/under_construction_page.dart';
 import 'package:laporin/shared_domain_data/auth/providers/auth_providers.dart';
 
+import '../providers/admin_navigation_providers.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_moderation_shell_screen.dart';
+import 'admin_petugas_screen.dart';
 import 'admin_profile_screen.dart';
 
 /// Main shell untuk Admin workspace.
-/// 5 tabs: Dashboard, Peta, Laporan, Petugas, Profil.
+/// 5 tabs: Dashboard (0), Peta (1), Laporan (2), Petugas (3), Profil (4).
 class AdminShellScreen extends ConsumerStatefulWidget {
   const AdminShellScreen({super.key});
 
@@ -34,6 +36,12 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Switch tab whenever the provider value changes (e.g. from dashboard
+    // priority-alert drill-in).
+    ref.listen<int>(adminTabIndexProvider, (previous, next) {
+      _scaffoldKey.currentState?.switchToTab(next);
+    });
+
     final user = ref.watch(currentUserProvider).valueOrNull;
 
     final scaffold = RoleScaffold(
@@ -54,14 +62,14 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
           body: const UnderConstructionPage(role: 'Admin', pageName: 'Peta'),
         ),
         RoleTab(
-          label: 'Laporan',
+          label: 'Moderasi',
           icon: Icons.description_outlined,
           body: const AdminModerationShellScreen(),
         ),
         RoleTab(
           label: 'Petugas',
           icon: Icons.engineering_outlined,
-          body: const UnderConstructionPage(role: 'Admin', pageName: 'Petugas'),
+          body: const AdminPetugasScreen(),
         ),
         RoleTab(
           label: 'Profil',

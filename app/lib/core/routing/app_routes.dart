@@ -16,4 +16,8 @@ class AppRoutes {
   static const String citizenNotifications = '/citizen/notifications';
   static const String officerNotifications = '/officer/notifications';
   static const String adminNotifications = '/admin/notifications';
+
+  // Admin sub-routes.
+  static const String adminPetugas = '/admin/petugas';
+  static String adminPetugasDetail(String uid) => '/admin/petugas/$uid';
 }

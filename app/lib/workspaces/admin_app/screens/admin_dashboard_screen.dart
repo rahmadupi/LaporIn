@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared_domain_data/auth/data/repositories/user_repository.dart';
 import '../../../shared_domain_data/reports/data/repositories/report_repository.dart';
+import '../providers/admin_navigation_providers.dart';
 import '../widgets/priority_alert_card.dart';
 import '../widgets/stat_card.dart';
 
@@ -42,21 +43,21 @@ class AdminDashboardScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 4),
-            Text(
-              'Selamat datang, Admin 👋',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Colors.grey.shade800,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Berikut ringkasan operasional hari ini',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 20),
+            // const SizedBox(height: 4),
+            // Text(
+            //   'Selamat datang, Admin 👋',
+            //   style: TextStyle(
+            //     fontSize: 20,
+            //     fontWeight: FontWeight.w700,
+            //     color: Colors.grey.shade800,
+            //   ),
+            // ),
+            // const SizedBox(height: 4),
+            // Text(
+            //   'Berikut ringkasan operasional hari ini',
+            //   style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            // ),
+            // const SizedBox(height: 20),
 
             // ===== Stat Cards (2×2) =====
             _StatCardsGrid(
@@ -176,54 +177,64 @@ class _StatCardsGrid extends StatelessWidget {
   }
 }
 
-class _PriorityAlertsList extends StatelessWidget {
+class _PriorityAlertsList extends ConsumerWidget {
   const _PriorityAlertsList({required this.counts});
   final PriorityCounts counts;
 
+  /// Switch to Moderasi → Laporan tab and pre-apply urgency + chip filter.
+  ///
+  /// Per the SRS dashboard spec:
+  /// - KRITIS → chip "Menunggu" + urgency "critical"
+  /// - TINGGI → chip "Diproses" + urgency "high"
+  /// - SEDANG → chip "Diproses" + urgency "medium"
+  /// - RENDAH → chip "Menunggu" + urgency "low"
+  void _drillIn(
+    WidgetRef ref, {
+    required String urgency,
+    required String chipFilter,
+  }) {
+    ref.read(laporanFilterProvider.notifier).state = chipFilter;
+    ref.read(laporanUrgencyFilterProvider.notifier).state = urgency;
+    // Bump nonce so the Laporan list rebuilds with the new filters even if
+    // it was already mounted (admin stays on tab 2 across navigations).
+    ref.read(laporanDrillInNonceProvider.notifier).state++;
+    // Switch to the Laporan tab (index 2 in AdminShellScreen).
+    ref.read(adminTabIndexProvider.notifier).state = 2;
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
         PriorityAlertCard(
           severity: AlertSeverity.critical,
           count: counts.kritis,
           description: 'Permasalahan sangat besar pada keselamatan publik',
-          onTap: () => _drillIn(context, urgency: 'critical'),
+          onTap: () =>
+              _drillIn(ref, urgency: 'critical', chipFilter: 'Menunggu'),
         ),
         const SizedBox(height: 10),
         PriorityAlertCard(
           severity: AlertSeverity.high,
           count: counts.tinggi,
           description: 'Permasalahan besar pada lingkungan dan keselamatan',
-          onTap: () => _drillIn(context, urgency: 'high'),
+          onTap: () => _drillIn(ref, urgency: 'high', chipFilter: 'Diproses'),
         ),
         const SizedBox(height: 10),
         PriorityAlertCard(
           severity: AlertSeverity.medium,
           count: counts.sedang,
           description: 'Permasalahan sedang pada infrastruktur',
-          onTap: () => _drillIn(context, urgency: 'medium'),
+          onTap: () => _drillIn(ref, urgency: 'medium', chipFilter: 'Diproses'),
         ),
         const SizedBox(height: 10),
         PriorityAlertCard(
           severity: AlertSeverity.low,
           count: counts.rendah,
           description: 'Permasalahan ringan',
-          onTap: () => _drillIn(context, urgency: 'low'),
+          onTap: () => _drillIn(ref, urgency: 'low', chipFilter: 'Menunggu'),
         ),
       ],
-    );
-  }
-
-  void _drillIn(BuildContext context, {required String urgency}) {
-    // TODO: navigate to Moderasi → Laporan with urgency filter pre-applied.
-    // The AdminShellScreen uses internal tab state via RoleScaffold; the
-    // dashboard does not have direct access to switch tabs. A future
-    // enhancement can wire a callback / provider to trigger tab switching.
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Buka Moderasi → Laporan dan filter urgensi: $urgency'),
-      ),
     );
   }
 }

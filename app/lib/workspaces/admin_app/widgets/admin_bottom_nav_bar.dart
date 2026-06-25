@@ -5,13 +5,21 @@ import 'package:go_router/go_router.dart';
 /// navigation bar.
 enum AdminNavDestination {
   dashboard('/admin', Icons.dashboard_outlined, Icons.dashboard, 'Dashboard'),
-  laporan('/admin/laporan', Icons.description_outlined, Icons.description,
-      'Laporan'),
+  laporan(
+    '/admin/laporan',
+    Icons.description_outlined,
+    Icons.description,
+    'Moderation',
+  ),
   petugas('/admin/petugas', Icons.badge_outlined, Icons.badge, 'Petugas'),
   profil('/admin/profil', Icons.person_outline, Icons.person, 'Profil');
 
   const AdminNavDestination(
-      this.routePath, this.icon, this.activeIcon, this.label);
+    this.routePath,
+    this.icon,
+    this.activeIcon,
+    this.label,
+  );
 
   final String routePath;
   final IconData icon;
@@ -76,8 +84,10 @@ class AdminBottomNavBar extends StatelessWidget {
             for (final dest in AdminNavDestination.values)
               NavigationDestination(
                 icon: Icon(dest.icon, color: Colors.grey.shade600),
-                selectedIcon:
-                    Icon(dest.activeIcon, color: Colors.blue.shade700),
+                selectedIcon: Icon(
+                  dest.activeIcon,
+                  color: Colors.blue.shade700,
+                ),
                 label: dest.label,
               ),
           ],

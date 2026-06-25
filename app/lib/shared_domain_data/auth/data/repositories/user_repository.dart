@@ -105,6 +105,17 @@ class UserRepository {
     await _users.doc(uid).update({'status': UserStatus.active.value});
   }
 
+  /// Toggle officer availability (`isAvailable`).
+  ///
+  /// Hanya untuk user dengan `role == "officer"` dan `status == "active"`.
+  /// Dipakai di halaman Petugas → Daftar Petugas oleh admin.
+  Future<void> setAvailability({
+    required String uid,
+    required bool isAvailable,
+  }) async {
+    await _users.doc(uid).update({'isAvailable': isAvailable});
+  }
+
   /// Count active users (citizen or officer).
   Future<int> countActive({required String role}) async {
     final snap = await _users

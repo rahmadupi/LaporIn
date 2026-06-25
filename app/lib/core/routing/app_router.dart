@@ -6,9 +6,11 @@ import '../../landing/splash/splash_screen.dart';
 import '../../landing/auth/login/login_screen.dart';
 import '../../landing/auth/register/register_screen.dart';
 import '../../landing/auth/forgot_password/forgot_password_screen.dart';
+import '../../shared_domain_data/auth/entities/user_entity.dart';
 import '../../shared_domain_data/auth/entities/user_role.dart';
 import '../../shared_domain_data/auth/providers/auth_providers.dart';
 import '../../workspaces/admin_app/screens/admin_shell_screen.dart';
+import '../../workspaces/admin_app/screens/officer_profile_view_screen.dart';
 import '../../workspaces/citizen_app/screens/citizen_shell_screen.dart';
 import '../../workspaces/officer_app/screens/officer_shell_screen.dart';
 import 'app_routes.dart';
@@ -69,6 +71,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.adminHome,
         builder: (context, state) => const AdminShellScreen(),
+        routes: [
+          // Officer profile drill-in. Passes the UserEntity via `extra`
+          // to avoid a re-read.
+          GoRoute(
+            path: 'petugas/:uid',
+            builder: (context, state) {
+              final extra = state.extra;
+              if (extra is UserEntity) {
+                return OfficerProfileViewScreen(officer: extra);
+              }
+              // Fallback: fetch by uid.
+              final uid = state.pathParameters['uid'] ?? '';
+              return _OfficerProfileLoader(uid: uid);
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.citizenHome,
@@ -95,5 +113,36 @@ String _routeForRole(UserRole role) {
     case UserRole.citizen:
     case UserRole.unknown:
       return AppRoutes.citizenHome;
+  }
+}
+
+/// Fallback loader untuk OfficerProfileViewScreen ketika navigasi
+/// tidak membawa `extra: UserEntity` (mis. dari deep link / refresh).
+class _OfficerProfileLoader extends ConsumerWidget {
+  const _OfficerProfileLoader({required this.uid});
+  final String uid;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(officerByIdProvider(uid));
+    return async.when(
+      data: (user) {
+        if (user == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Profil Petugas')),
+            body: const Center(child: Text('Officer tidak ditemukan.')),
+          );
+        }
+        return OfficerProfileViewScreen(officer: user);
+      },
+      loading: () => Scaffold(
+        appBar: AppBar(title: const Text('Profil Petugas')),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(title: const Text('Profil Petugas')),
+        body: Center(child: Text('Error: $e')),
+      ),
+    );
   }
 }

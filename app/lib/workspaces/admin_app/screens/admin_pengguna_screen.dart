@@ -5,6 +5,7 @@ import '../../../shared_domain_data/auth/data/repositories/user_repository.dart'
 import '../../../shared_domain_data/auth/entities/user_entity.dart';
 import '../../../shared_domain_data/auth/entities/user_role.dart';
 import '../../../shared_domain_data/auth/providers/auth_providers.dart';
+import '../providers/admin_navigation_providers.dart';
 
 /// Sub-tab internal untuk halaman Pengguna.
 enum PenggunaTab { aktif, diblokir, persetujuan, dormant }
@@ -27,6 +28,8 @@ extension on PenggunaTab {
 /// Moderation → Pengguna sub-page.
 ///
 /// Empat tab internal: Aktif · Diblokir · Persetujuan · Dormant.
+/// Search bar membaca dari `penggunaSearchQueryProvider` sehingga perubahan
+/// ter-reaktif di semua tab list (tidak perlu pass-down lewat state).
 class AdminPenggunaScreen extends ConsumerStatefulWidget {
   const AdminPenggunaScreen({super.key});
 
@@ -38,8 +41,7 @@ class AdminPenggunaScreen extends ConsumerStatefulWidget {
 class _AdminPenggunaScreenState extends ConsumerState<AdminPenggunaScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  final _searchController = TextEditingController();
-  String _query = '';
+  late final TextEditingController _searchController;
 
   @override
   void initState() {
@@ -48,6 +50,8 @@ class _AdminPenggunaScreenState extends ConsumerState<AdminPenggunaScreen>
       length: PenggunaTab.values.length,
       vsync: this,
     );
+    _searchController =
+        TextEditingController(text: ref.read(penggunaSearchQueryProvider));
   }
 
   @override
@@ -59,14 +63,19 @@ class _AdminPenggunaScreenState extends ConsumerState<AdminPenggunaScreen>
 
   @override
   Widget build(BuildContext context) {
+    final searchQuery = ref.watch(penggunaSearchQueryProvider);
+
     return Column(
       children: [
-        // Search bar
+        // Search bar (writes to provider → list rebuilds reactively)
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
           child: TextField(
             controller: _searchController,
-            onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+            onChanged: (v) {
+              ref.read(penggunaSearchQueryProvider.notifier).state =
+                  v.trim().toLowerCase();
+            },
             decoration: InputDecoration(
               hintText: 'Cari nama atau email...',
               prefixIcon: const Icon(Icons.search),
@@ -78,13 +87,14 @@ class _AdminPenggunaScreenState extends ConsumerState<AdminPenggunaScreen>
                 horizontal: 12,
                 vertical: 12,
               ),
-              suffixIcon: _query.isEmpty
+              suffixIcon: searchQuery.isEmpty
                   ? null
                   : IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () {
                         _searchController.clear();
-                        setState(() => _query = '');
+                        ref.read(penggunaSearchQueryProvider.notifier).state =
+                            '';
                       },
                     ),
             ),
@@ -126,9 +136,10 @@ class _UserListAktif extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final usersAsync = ref.watch(activeUsersStreamProvider);
+    final query = ref.watch(penggunaSearchQueryProvider);
     return _UserListScaffold(
       usersAsync: usersAsync,
-      query: _queryOf(context),
+      query: query,
       action: (user) => _BanButton(user: user),
       emptyMessage: 'Tidak ada pengguna aktif.',
     );
@@ -141,9 +152,10 @@ class _UserListDiblokir extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final usersAsync = ref.watch(bannedUsersStreamProvider);
+    final query = ref.watch(penggunaSearchQueryProvider);
     return _UserListScaffold(
       usersAsync: usersAsync,
-      query: _queryOf(context),
+      query: query,
       action: (user) => _UnbanButton(user: user),
       emptyMessage: 'Tidak ada pengguna diblokir.',
     );
@@ -156,9 +168,10 @@ class _UserListPersetujuan extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final usersAsync = ref.watch(pendingOfficersStreamProvider);
+    final query = ref.watch(penggunaSearchQueryProvider);
     return _UserListScaffold(
       usersAsync: usersAsync,
-      query: _queryOf(context),
+      query: query,
       action: (user) => _ApprovalActions(user: user),
       emptyMessage: 'Tidak ada officer menunggu persetujuan.',
     );
@@ -171,18 +184,14 @@ class _UserListDormant extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final usersAsync = ref.watch(dormantUsersStreamProvider);
+    final query = ref.watch(penggunaSearchQueryProvider);
     return _UserListScaffold(
       usersAsync: usersAsync,
-      query: _queryOf(context),
+      query: query,
       action: (user) => _ReactivateButton(user: user),
       emptyMessage: 'Tidak ada akun dormant.',
     );
   }
-}
-
-String _queryOf(BuildContext context) {
-  final state = context.findAncestorStateOfType<_AdminPenggunaScreenState>();
-  return state?._query ?? '';
 }
 
 class _UserListScaffold extends StatelessWidget {
@@ -223,8 +232,10 @@ class _UserListScaffold extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           itemCount: filtered.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (context, i) =>
-              _UserCard(user: filtered[i], actionWidget: action(filtered[i])),
+          itemBuilder: (context, i) => _UserCard(
+            user: filtered[i],
+            actionWidget: action(filtered[i]),
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -283,13 +294,19 @@ class _UserCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '${user.email} • $roleLabel',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                  ),
                 ),
                 if (user.banReason != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     'Alasan: ${user.banReason}',
-                    style: TextStyle(fontSize: 11, color: Colors.red.shade700),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.red.shade700,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -347,23 +364,21 @@ class _BanButton extends ConsumerWidget {
     final admin = ref.read(currentUserProvider).valueOrNull;
     if (admin == null) return;
     try {
-      await ref
-          .read(userRepositoryProvider)
-          .ban(
+      await ref.read(userRepositoryProvider).ban(
             uid: user.uid,
             reason: reasonController.text.trim(),
             bannedBy: admin.uid,
           );
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Pengguna diblokir.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pengguna diblokir.')),
+        );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal: $e')),
+        );
       }
     }
   }
@@ -394,7 +409,9 @@ class _UnbanButton extends ConsumerWidget {
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('Buka Blokir'),
-            content: Text('Buka blokir untuk ${user.fullName}?'),
+            content: Text(
+              'Buka blokir untuk ${user.fullName}?',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -411,15 +428,15 @@ class _UnbanButton extends ConsumerWidget {
         try {
           await ref.read(userRepositoryProvider).unban(user.uid);
           if (context.mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Pengguna di-unban.')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Pengguna di-unban.')),
+            );
           }
         } catch (e) {
           if (context.mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Gagal: $e')),
+            );
           }
         }
       },
@@ -447,9 +464,10 @@ class _ApprovalActions extends ConsumerWidget {
             final admin = ref.read(currentUserProvider).valueOrNull;
             if (admin == null) return;
             try {
-              await ref
-                  .read(userRepositoryProvider)
-                  .approveOfficer(uid: user.uid, approvedBy: admin.uid);
+              await ref.read(userRepositoryProvider).approveOfficer(
+                    uid: user.uid,
+                    approvedBy: admin.uid,
+                  );
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Officer disetujui.')),
@@ -457,9 +475,9 @@ class _ApprovalActions extends ConsumerWidget {
               }
             } catch (e) {
               if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Gagal: $e')),
+                );
               }
             }
           },
@@ -491,9 +509,7 @@ class _ApprovalActions extends ConsumerWidget {
                       if (reasonController.text.trim().length < 10) return;
                       Navigator.pop(context, true);
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                    ),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                     child: const Text('Tolak'),
                   ),
                 ],
@@ -503,9 +519,7 @@ class _ApprovalActions extends ConsumerWidget {
             final admin = ref.read(currentUserProvider).valueOrNull;
             if (admin == null) return;
             try {
-              await ref
-                  .read(userRepositoryProvider)
-                  .rejectOfficer(
+              await ref.read(userRepositoryProvider).rejectOfficer(
                     uid: user.uid,
                     reason: reasonController.text.trim(),
                     bannedBy: admin.uid,
@@ -517,9 +531,9 @@ class _ApprovalActions extends ConsumerWidget {
               }
             } catch (e) {
               if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Gagal: $e')),
+                );
               }
             }
           },
@@ -548,9 +562,9 @@ class _ReactivateButton extends ConsumerWidget {
           }
         } catch (e) {
           if (context.mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Gagal: $e')),
+            );
           }
         }
       },
