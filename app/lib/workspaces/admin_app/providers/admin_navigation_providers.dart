@@ -9,6 +9,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 ///   0 = Dashboard, 1 = Peta, 2 = Laporan, 3 = Petugas, 4 = Profil
 final adminTabIndexProvider = StateProvider<int>((ref) => 0);
 
+/// Bumped setiap kali dashboard priority-alert drill-in fires.
+///
+/// Dipakai oleh `AdminShellScreen` untuk memaksa `RoleScaffold.switchToTab(2)`
+/// bekerja **setiap kali** drill-in dipicu, bukan hanya saat nilai
+/// `adminTabIndexProvider` berubah. Tanpa nonce ini, nilai provider bisa
+/// "stuck" di 2 (karena `RoleScaffold`'s `BottomNavigationBar` tidak sinkron
+/// balik ke provider), sehingga drill-in kedua tidak mengaktifkan listener.
+final adminDrillInNonceProvider = StateProvider<int>((ref) => 0);
+
 /// Active chip filter on the Moderasi → Laporan sub-page.
 ///
 /// One of the values from `LaporanFilter` label:

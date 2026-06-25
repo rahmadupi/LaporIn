@@ -169,6 +169,46 @@ class DispatchRepository {
         .doc(officerId);
     await officerSubRef.update({'status': 'rejected'});
   }
+
+  /// Admin-initiated dispatch (dari tombol "Terima" di Laporan list).
+  ///
+  /// Berbeda dari [acceptSelfRequest] (officer pre-existing ajuan diri),
+  /// method ini **tidak** memperbarui sub-doc officer — officer hanya
+  /// dipilih admin secara manual dari daftar officer aktif.
+  ///
+  /// Batched write (transaksi atomik) yang sama:
+  ///   1. `/dispatches/{newId}` → dokumen dispatch baru
+  ///   2. `/reports/{id}` → `status: dispatched`, `assignedOfficerId`,
+  ///      `dispatchedAt: serverTimestamp`, `updatedAt: serverTimestamp`
+  Future<String> createDispatch({
+    required String reportId,
+    required String officerId,
+    required String assignedBy,
+  }) async {
+    final dispatchRef = _dispatches.doc();
+    final reportRef = _reports.doc(reportId);
+
+    final dispatch = DispatchEntity(
+      dispatchId: dispatchRef.id,
+      reportId: reportId,
+      officerId: officerId,
+      assignedBy: assignedBy,
+      status: DispatchStatus.dispatched,
+      assignedAt: DateTime.now(),
+    );
+
+    final batch = _db.batch();
+    batch.set(dispatchRef, DispatchModel.toFirestore(dispatch));
+    batch.update(reportRef, {
+      'status': 'dispatched',
+      'assignedOfficerId': officerId,
+      'dispatchedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
+    return dispatchRef.id;
+  }
 }
 
 final dispatchRepositoryProvider = Provider<DispatchRepository>((ref) {

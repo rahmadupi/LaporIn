@@ -5,6 +5,7 @@ import '../../../shared_domain_data/reports/data/repositories/report_repository.
 import '../../../shared_domain_data/reports/domain/entities/report_entity.dart';
 import '../providers/admin_navigation_providers.dart';
 import '../widgets/dialogs/reject_report_dialog.dart';
+import '../widgets/dispatch_form_sheet.dart';
 
 /// Filter chips untuk Moderasi → Laporan.
 enum LaporanFilter {
@@ -70,7 +71,8 @@ class _AdminLaporanListScreenState
     final provFilterLabel = ref.read(laporanFilterProvider);
     _filter = _parseFilterLabel(widget.initialFilter?.label ?? provFilterLabel);
     final provUrgency = ref.read(laporanUrgencyFilterProvider);
-    _urgencyFilter = widget.initialUrgency ??
+    _urgencyFilter =
+        widget.initialUrgency ??
         (provUrgency != null ? ReportUrgency.fromString(provUrgency) : null);
     _lastNonce = ref.read(laporanDrillInNonceProvider);
   }
@@ -230,15 +232,23 @@ class _ReportRow extends ConsumerWidget {
 
   Future<void> _terima(BuildContext context, WidgetRef ref) async {
     try {
+      // Tahap 1: terima laporan → status `in_review`.
       await ref
           .read(reportRepositoryProvider)
           .acceptToInReview(report.reportId);
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Laporan diterima.')));
-        // TODO: navigate to Dispatch Form (officer picker)
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Laporan diterima.')));
+
+      // Tahap 2: buka Dispatch Form (officer picker) — admin wajib
+      // memilih officer untuk menugaskan laporan. Submit form ini akan
+      // menjalankan **batched write** atomik:
+      //   - Buat `/dispatches/{id}` baru
+      //   - Update `/reports/{id}` → `dispatched` + `assignedOfficerId` +
+      //     `dispatchedAt`
+      //   - (Jika ada ajuan diri) update sub-doc officer `applied` → `accepted`
+      await DispatchFormSheet.showForAdminInitiated(context, report: report);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
@@ -552,9 +562,9 @@ class _LocationFilterBar extends ConsumerWidget {
     final districts = _uniqueValues(
       (r) =>
           (province == null || r.province == province) &&
-                  (city == null || r.city == city)
-              ? (r.district ?? '')
-              : '',
+              (city == null || r.city == city)
+          ? (r.district ?? '')
+          : '',
     );
 
     final hasAnyFilter = province != null || city != null || district != null;
@@ -566,8 +576,11 @@ class _LocationFilterBar extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.location_on_outlined,
-                  size: 16, color: Colors.grey.shade700),
+              Icon(
+                Icons.location_on_outlined,
+                size: 16,
+                color: Colors.grey.shade700,
+              ),
               const SizedBox(width: 4),
               Text(
                 'Lokasi',
@@ -586,7 +599,9 @@ class _LocationFilterBar extends ConsumerWidget {
                     ref.read(laporanCityFilterProvider.notifier).state = null;
                     ref.read(laporanDistrictFilterProvider.notifier).state =
                         null;
-                    ref.read(laporanLocationResetNonceProvider.notifier).state++;
+                    ref
+                        .read(laporanLocationResetNonceProvider.notifier)
+                        .state++;
                   },
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -604,7 +619,10 @@ class _LocationFilterBar extends ConsumerWidget {
                   hint: 'Provinsi',
                   value: province,
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('Semua Provinsi')),
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('Semua Provinsi'),
+                    ),
                     for (final p in provinces)
                       DropdownMenuItem(value: p, child: Text(p)),
                   ],
@@ -623,7 +641,10 @@ class _LocationFilterBar extends ConsumerWidget {
                   hint: 'Kota',
                   value: city,
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('Semua Kota')),
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('Semua Kota'),
+                    ),
                     for (final c in cities)
                       DropdownMenuItem(value: c, child: Text(c)),
                   ],
@@ -640,7 +661,10 @@ class _LocationFilterBar extends ConsumerWidget {
                   hint: 'Desa',
                   value: district,
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('Semua Desa')),
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('Semua Desa'),
+                    ),
                     for (final d in districts)
                       DropdownMenuItem(value: d, child: Text(d)),
                   ],

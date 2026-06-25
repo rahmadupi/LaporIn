@@ -41,6 +41,12 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
     ref.listen<int>(adminTabIndexProvider, (previous, next) {
       _scaffoldKey.currentState?.switchToTab(next);
     });
+    // Drill-in nonce: memaksa tab switch ke Laporan (2) setiap kali
+    // dashboard fire drill-in, tanpa peduli apakah `adminTabIndexProvider`
+    // berubah atau tidak (lihat `adminDrillInNonceProvider` untuk konteks).
+    ref.listen<int>(adminDrillInNonceProvider, (previous, next) {
+      _scaffoldKey.currentState?.switchToTab(2);
+    });
 
     final user = ref.watch(currentUserProvider).valueOrNull;
 

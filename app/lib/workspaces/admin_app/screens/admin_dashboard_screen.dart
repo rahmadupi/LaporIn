@@ -200,6 +200,11 @@ class _PriorityAlertsList extends ConsumerWidget {
     ref.read(laporanDrillInNonceProvider.notifier).state++;
     // Switch to the Laporan tab (index 2 in AdminShellScreen).
     ref.read(adminTabIndexProvider.notifier).state = 2;
+    // Bump drill-in nonce for AdminShellScreen listener — ensures tab switch
+    // fires every time, even if `adminTabIndexProvider` is already at 2 from
+    // a prior drill-in (the `RoleScaffold` doesn't sync local tab state
+    // back to the provider, so we need a separate trigger).
+    ref.read(adminDrillInNonceProvider.notifier).state++;
   }
 
   @override
