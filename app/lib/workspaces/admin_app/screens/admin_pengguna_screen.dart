@@ -226,12 +226,14 @@ class _UserListScaffold extends StatelessWidget {
     required this.query,
     required this.action,
     required this.emptyMessage,
+    this.extraInfo,
   });
 
   final AsyncValue<List<UserEntity>> usersAsync;
   final String query;
   final Widget Function(UserEntity user) action;
   final String emptyMessage;
+  final Widget Function(UserEntity user)? extraInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -258,8 +260,11 @@ class _UserListScaffold extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           itemCount: filtered.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (context, i) =>
-              _UserCard(user: filtered[i], actionWidget: action(filtered[i])),
+          itemBuilder: (context, i) => _UserCard(
+            user: filtered[i],
+            actionWidget: action(filtered[i]),
+            extraInfo: extraInfo?.call(filtered[i]),
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -269,9 +274,14 @@ class _UserListScaffold extends StatelessWidget {
 }
 
 class _UserCard extends StatelessWidget {
-  const _UserCard({required this.user, required this.actionWidget});
+  const _UserCard({
+    required this.user,
+    required this.actionWidget,
+    this.extraInfo,
+  });
   final UserEntity user;
   final Widget actionWidget;
+  final Widget? extraInfo;
 
   String _initials() {
     final parts = user.fullName.trim().split(RegExp(r'\s+'));
@@ -329,12 +339,65 @@ class _UserCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
+                if (extraInfo != null) ...[
+                  const SizedBox(height: 6),
+                  extraInfo!,
+                ],
               ],
             ),
           ),
           actionWidget,
         ],
       ),
+    );
+  }
+}
+
+/// Badge ringkas yang menandai stage verifikasi officer — dipakai di
+/// tab Persetujuan untuk membedakan `pending_verification` (belum
+/// verifikasi email) vs `pending` (siap disetujui).
+class _StageBadge extends StatelessWidget {
+  const _StageBadge({
+    required this.label,
+    required this.color,
+    required this.icon,
+    this.tooltip,
+  });
+
+  final String label;
+  final Color color;
+  final IconData icon;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (tooltip == null) return badge;
+    return Tooltip(
+      message: tooltip!,
+      child: badge,
     );
   }
 }

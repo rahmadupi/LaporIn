@@ -238,8 +238,8 @@ class ProofUploadService {
       if (afterUrl != null) 'photoAfterUrl': afterUrl,
       if (canonicalProof != null) 'proofUrl': canonicalProof,
       if (description != null) 'proofDescription': description,
-      if (position != null)
-        'proofLocation': GeoPoint(position.latitude, position.longitude),
+      // if (position != null)
+      //   'proofLocation': GeoPoint(position.latitude, position.longitude),
     };
     await FirebaseFirestore.instance
         .collection('reports')
