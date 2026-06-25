@@ -23,6 +23,9 @@ class AppRoutes {
   static const String officerProof = '/officer/proof';
   static String officerProofFor(String taskId) => '/officer/proof/$taskId';
 
+  // Citizen sub-routes.
+  static const String createReport = '/citizen/create-report';
+
   // Admin sub-routes.
   static const String adminPetugas = '/admin/petugas';
   static String adminPetugasDetail(String uid) => '/admin/petugas/$uid';

@@ -6,10 +6,13 @@ import 'package:laporin/shared/ui/back_press_handler.dart';
 import 'package:laporin/shared/ui/role_scaffold.dart';
 import 'package:laporin/shared/ui/under_construction_page.dart';
 import 'package:laporin/shared_domain_data/auth/providers/auth_providers.dart';
+import 'citizen_home_screen.dart';
+import 'citizen_laporan_screen.dart';
 import 'citizen_profile_screen.dart';
+import 'report_history_screen.dart';
 
 /// Main shell untuk Citizen workspace.
-/// 5 tabs: Beranda, Buat Laporan, Riwayat, Peta, Notifikasi, Profil.
+/// 5 tabs: Beranda, Peta, Laporan, Riwayat, Profil.
 class CitizenShellScreen extends ConsumerStatefulWidget {
   const CitizenShellScreen({super.key});
 
@@ -24,7 +27,6 @@ class _CitizenShellScreenState extends ConsumerState<CitizenShellScreen> {
     await ref.read(authRepositoryProvider).signOut();
     if (mounted) {
       await ref.read(currentUserProvider.notifier).refresh();
-      // Navigate ke splash dulu, lalu akan redirect ke login
       if (mounted) context.go(AppRoutes.splash);
     }
   }
@@ -40,26 +42,26 @@ class _CitizenShellScreenState extends ConsumerState<CitizenShellScreen> {
       userRole: 'citizen',
       notificationRoute: AppRoutes.citizenNotifications,
       onLogout: _logout,
-      tabs: const [
-        RoleTab(
-          label: 'Dashboard',
+      tabs: [
+        const RoleTab(
+          label: 'Beranda',
           icon: Icons.home_outlined,
-          body: UnderConstructionPage(role: 'Citizen', pageName: 'Dashboard'),
+          body: CitizenHomeScreen(),
         ),
-        RoleTab(
+        const RoleTab(
           label: 'Peta',
           icon: Icons.map_outlined,
           body: UnderConstructionPage(role: 'Citizen', pageName: 'Peta'),
         ),
-        RoleTab(
+        const RoleTab(
           label: 'Laporan',
           icon: Icons.description_outlined,
-          body: UnderConstructionPage(role: 'Citizen', pageName: 'Laporan'),
+          body: CitizenLaporanScreen(),
         ),
-        RoleTab(
+        const RoleTab(
           label: 'Riwayat',
           icon: Icons.history,
-          body: UnderConstructionPage(role: 'Citizen', pageName: 'Riwayat'),
+          body: ReportHistoryScreen(),
         ),
         RoleTab(
           label: 'Profil',

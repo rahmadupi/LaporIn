@@ -64,6 +64,160 @@ class ReportRepository {
         );
   }
 
+  /// Stream seluruh laporan yang dibuat oleh satu citizen (CIT-003).
+  /// Default **tidak** memfilter status — semua status ditampilkan
+  /// (pending, in_review, dispatched, in_progress, resolved, rejected).
+  /// Filtering dilakukan client-side via chip (lihat ReportHistoryScreen).
+  Stream<List<ReportEntity>> streamByReporter(String reporterId) {
+    return _reports
+        .where('reporterId', isEqualTo: reporterId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snap) => snap.docs.map((d) => ReportModel.fromFirestore(d)).toList(),
+        );
+  }
+
+  /// Stream feed publik (CIT-013/CIT-014). Menampilkan laporan orang
+  /// lain (exclude milik sendiri) dengan status visible (semua kecuali
+  /// `rejected`). Limit default 50.
+  Stream<List<ReportEntity>> streamPublicFeed({
+    required String excludeReporterId,
+    int limit = 50,
+  }) {
+    return _reports
+        .where('status', whereIn: const [
+          'pending',
+          'in_review',
+          'dispatched',
+          'in_progress',
+          'resolved',
+        ])
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map((d) => ReportModel.fromFirestore(d))
+              // exclude laporan milik sendiri (BR-CIT-001: identitas
+              // tetap di-mask di UI; tapi filter dilakukan di client).
+              .where((e) => e.reporterId != excludeReporterId)
+              .toList(),
+        );
+  }
+
+  /// Buat laporan baru dari citizen (CIT-001 + CIT-002). Field ditulis
+  /// mentah via Map karena `ReportModel.toFirestore` belum mendukung
+  /// `addressDetails` (admin/analytics) — kita tulis via raw map agar
+  /// sesuai [SRS/data-model.md §3.2].
+  Future<String> createCitizenReport({
+    required String reporterId,
+    required String title,
+    required String description,
+    required String categoryId,
+    required ReportUrgency urgencyLevel,
+    required bool isAnonymous,
+    required String imageUrl,
+    String? addressDetail,
+    String? province,
+    String? city,
+    String? district,
+    required double latitude,
+    required double longitude,
+    String? geohash,
+  }) async {
+    final docRef = _reports.doc();
+    final now = DateTime.now();
+    final entity = ReportEntity(
+      reportId: docRef.id,
+      reporterId: reporterId,
+      isAnonymous: isAnonymous,
+      title: title,
+      description: description,
+      categoryId: categoryId,
+      urgencyLevel: urgencyLevel,
+      status: ReportStatus.pending,
+      imageUrl: imageUrl,
+      addressDetail: addressDetail,
+      province: province,
+      city: city,
+      district: district,
+      latitude: latitude,
+      longitude: longitude,
+      geohash: geohash,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await docRef.set({
+      ...ReportModel.toFirestore(entity),
+      'addressDetails': {
+        if (province != null) 'province': province,
+        if (city != null) 'city': city,
+        if (district != null) 'district': district,
+      },
+    });
+    return docRef.id;
+  }
+
+  /// Soft delete laporan (CIT-007). Hanya boleh saat status `pending`.
+  /// Firestore Security Rules di server-side menjadi pengaman kedua.
+  Future<void> softDelete(String reportId) async {
+    await _reports.doc(reportId).update({
+      'isDeleted': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Edit deskripsi (CIT-008). Hanya boleh saat status `pending`.
+  Future<void> updateDescription(String reportId, String description) async {
+    await _reports.doc(reportId).update({
+      'description': description,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Ajukan banding (CIT-005) untuk laporan yang `rejected` dalam 24 jam.
+  Future<void> submitAppeal(String reportId, String reason) async {
+    await _reports.doc(reportId).update({
+      'appealRequested': true,
+      'appealReason': reason,
+      'appealAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Kirim rating (CIT-009) untuk laporan yang `resolved`. Disimpan di
+  /// koleksi top-level `/ratings/{ratingId}`.
+  Future<void> submitRating({
+    required String reportId,
+    required String reporterId,
+    required int stars,
+    String? comment,
+  }) async {
+    final ref = _db.collection('ratings').doc();
+    await ref.set({
+      'ratingId': ref.id,
+      'reportId': reportId,
+      'reporterId': reporterId,
+      'stars': stars,
+      if (comment != null && comment.isNotEmpty) 'comment': comment,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Stream kategori dari `/settings/categories` untuk dropdown di
+  /// Report Flow (Step 1 — Kategori). Hanya `isActive == true`.
+  Stream<List<Map<String, dynamic>>> streamActiveCategories() {
+    return _db
+        .collection('settings')
+        .doc('categories')
+        .collection('categories')
+        .where('isActive', isEqualTo: true)
+        .orderBy('name')
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => d.data()).toList());
+  }
+
   /// Buat laporan darurat dari officer (OFC-012). Field-field yang
   /// ditulis mengikuti ReportModel.toFirestore agar konsisten dengan
   /// laporan citizen.
@@ -222,6 +376,31 @@ final myOfficerHistoryProvider =
             statuses: const [ReportStatus.resolved],
           );
     });
+
+/// Stream provider: seluruh laporan yang dibuat oleh satu citizen
+/// (CIT-003). Dipakai oleh Citizen Riwayat.
+final myCitizenReportsProvider =
+    StreamProvider.family<List<ReportEntity>, String>((ref, reporterId) {
+      return ref.watch(reportRepositoryProvider).streamByReporter(reporterId);
+});
+
+/// Stream provider: feed publik laporan orang lain (CIT-013).
+/// `excludeReporterId` = current citizen UID agar laporan sendiri
+/// tidak muncul (sesuai SRS — laporan sendiri tampil di Riwayat).
+final publicReportsFeedProvider = StreamProvider.family<
+  List<ReportEntity>,
+  String
+>((ref, excludeReporterId) {
+  return ref
+      .watch(reportRepositoryProvider)
+      .streamPublicFeed(excludeReporterId: excludeReporterId);
+});
+
+/// Stream provider: kategori aktif untuk dropdown di Report Flow.
+final activeCategoriesProvider =
+    StreamProvider<List<Map<String, dynamic>>>((ref) {
+  return ref.watch(reportRepositoryProvider).streamActiveCategories();
+});
 
 /// Future provider: priority alert counts.
 class PriorityCounts {

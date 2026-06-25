@@ -13,6 +13,7 @@ import '../../shared_domain_data/auth/providers/auth_providers.dart';
 import '../../workspaces/admin_app/screens/admin_shell_screen.dart';
 import '../../workspaces/admin_app/screens/officer_profile_view_screen.dart';
 import '../../workspaces/citizen_app/screens/citizen_shell_screen.dart';
+import '../../workspaces/citizen_app/screens/report_flow_screen.dart';
 import '../../workspaces/officer_app/screens/officer_proof_screen.dart';
 import '../../workspaces/officer_app/screens/officer_shell_screen.dart';
 import '../../workspaces/officer_app/screens/officer_task_detail_screen.dart';
@@ -94,6 +95,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.citizenHome,
         builder: (context, state) => const CitizenShellScreen(),
+        routes: [
+          // Citizen Buat Laporan — wizard multi-step per
+          // [SRS/citizen/feature/report_flow.md].
+          GoRoute(
+            path: 'create-report',
+            builder: (context, state) => const ReportFlowScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.officerHome,
