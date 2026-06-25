@@ -40,9 +40,7 @@ class CitizenHomeScreen extends ConsumerWidget {
       children: [
         _Greeting(name: user.fullName),
         const SizedBox(height: 20),
-        _HeroCta(
-          onTap: () => context.push(AppRoutes.createReport),
-        ),
+        _HeroCta(onTap: () => context.push(AppRoutes.createReport)),
         const SizedBox(height: 20),
         _StatsRow(asyncReports: myReports),
         const SizedBox(height: 20),
@@ -100,19 +98,16 @@ class _Greeting extends StatelessWidget {
     final greeting = hour < 11
         ? 'Selamat Pagi'
         : hour < 15
-            ? 'Selamat Siang'
-            : hour < 18
-                ? 'Selamat Sore'
-                : 'Selamat Malam';
+        ? 'Selamat Siang'
+        : hour < 18
+        ? 'Selamat Sore'
+        : 'Selamat Malam';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           '$greeting,',
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 2),
         Text(
@@ -181,10 +176,7 @@ class _HeroCta extends StatelessWidget {
                     SizedBox(height: 2),
                     Text(
                       'Laporkan kerusakan infrastruktur di sekitarmu',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.white70),
                     ),
                   ],
                 ),
@@ -211,16 +203,20 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final reports = asyncReports.valueOrNull ?? const <ReportEntity>[];
     final aktif = reports
-        .where((r) =>
-            r.status == ReportStatus.inProgress ||
-            r.status == ReportStatus.dispatched)
+        .where(
+          (r) =>
+              r.status == ReportStatus.inProgress ||
+              r.status == ReportStatus.dispatched,
+        )
         .length;
     final now = DateTime.now();
     final selesaiBulanIni = reports
-        .where((r) =>
-            r.status == ReportStatus.resolved &&
-            r.updatedAt.year == now.year &&
-            r.updatedAt.month == now.month)
+        .where(
+          (r) =>
+              r.status == ReportStatus.resolved &&
+              r.updatedAt.year == now.year &&
+              r.updatedAt.month == now.month,
+        )
         .length;
 
     return Row(
@@ -318,16 +314,12 @@ class _EmptyRecent extends StatelessWidget {
       ),
       child: const Column(
         children: [
-          Icon(Icons.inbox_outlined,
-              size: 48, color: AppColors.textSecondary),
+          Icon(Icons.inbox_outlined, size: 48, color: AppColors.textSecondary),
           SizedBox(height: 8),
           Text(
             'Belum ada laporan. Yuk buat yang pertama!',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -348,10 +340,7 @@ class _ErrorBox extends StatelessWidget {
       ),
       child: Text(
         'Gagal memuat: $message',
-        style: const TextStyle(
-          fontSize: 12,
-          color: AppColors.error,
-        ),
+        style: const TextStyle(fontSize: 12, color: AppColors.error),
       ),
     );
   }

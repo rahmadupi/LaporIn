@@ -86,13 +86,16 @@ class ReportRepository {
     int limit = 50,
   }) {
     return _reports
-        .where('status', whereIn: const [
-          'pending',
-          'in_review',
-          'dispatched',
-          'in_progress',
-          'resolved',
-        ])
+        .where(
+          'status',
+          whereIn: const [
+            'pending',
+            'in_review',
+            'dispatched',
+            'in_progress',
+            'resolved',
+          ],
+        )
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
@@ -382,23 +385,22 @@ final myOfficerHistoryProvider =
 final myCitizenReportsProvider =
     StreamProvider.family<List<ReportEntity>, String>((ref, reporterId) {
       return ref.watch(reportRepositoryProvider).streamByReporter(reporterId);
-});
+    });
 
 /// Stream provider: feed publik laporan orang lain (CIT-013).
 /// `excludeReporterId` = current citizen UID agar laporan sendiri
 /// tidak muncul (sesuai SRS — laporan sendiri tampil di Riwayat).
-final publicReportsFeedProvider = StreamProvider.family<
-  List<ReportEntity>,
-  String
->((ref, excludeReporterId) {
-  return ref
-      .watch(reportRepositoryProvider)
-      .streamPublicFeed(excludeReporterId: excludeReporterId);
-});
+final publicReportsFeedProvider =
+    StreamProvider.family<List<ReportEntity>, String>((ref, excludeReporterId) {
+      return ref
+          .watch(reportRepositoryProvider)
+          .streamPublicFeed(excludeReporterId: excludeReporterId);
+    });
 
 /// Stream provider: kategori aktif untuk dropdown di Report Flow.
-final activeCategoriesProvider =
-    StreamProvider<List<Map<String, dynamic>>>((ref) {
+final activeCategoriesProvider = StreamProvider<List<Map<String, dynamic>>>((
+  ref,
+) {
   return ref.watch(reportRepositoryProvider).streamActiveCategories();
 });
 

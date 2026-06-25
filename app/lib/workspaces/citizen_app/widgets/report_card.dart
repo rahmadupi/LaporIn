@@ -26,7 +26,8 @@ class ReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = entity.imageUrl ??
+    final imageUrl =
+        entity.imageUrl ??
         (entity.imageUrls.isNotEmpty ? entity.imageUrls.first : null);
 
     return Card(
@@ -65,8 +66,11 @@ class ReportCard extends StatelessWidget {
                         entity.addressDetail!.isNotEmpty)
                       Row(
                         children: [
-                          const Icon(Icons.place_outlined,
-                              size: 12, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.place_outlined,
+                            size: 12,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -117,9 +121,7 @@ class ReportCard extends StatelessWidget {
     final now = DateTime.now();
     final diff = now.difference(d);
     if (diff.inMinutes < 60) {
-      return diff.inMinutes <= 1
-          ? 'Baru saja'
-          : '${diff.inMinutes} menit lalu';
+      return diff.inMinutes <= 1 ? 'Baru saja' : '${diff.inMinutes} menit lalu';
     }
     if (diff.inHours < 24) {
       return '${diff.inHours} jam lalu';
@@ -160,8 +162,7 @@ class _Thumbnail extends StatelessWidget {
           color: AppColors.scaffoldBackground,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Icon(Icons.image_outlined,
-            color: AppColors.textSecondary),
+        child: const Icon(Icons.image_outlined, color: AppColors.textSecondary),
       );
     }
     return ClipRRect(
@@ -175,8 +176,11 @@ class _Thumbnail extends StatelessWidget {
           width: 64,
           height: 64,
           color: AppColors.scaffoldBackground,
-          child: const Icon(Icons.broken_image,
-              size: 18, color: AppColors.textSecondary),
+          child: const Icon(
+            Icons.broken_image,
+            size: 18,
+            color: AppColors.textSecondary,
+          ),
         ),
       ),
     );
@@ -254,8 +258,11 @@ class _AnonimPill extends StatelessWidget {
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.visibility_off_outlined,
-              size: 10, color: AppColors.textSecondary),
+          Icon(
+            Icons.visibility_off_outlined,
+            size: 10,
+            color: AppColors.textSecondary,
+          ),
           SizedBox(width: 4),
           Text(
             'Anonim',
@@ -290,8 +297,11 @@ class _DistancePill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.near_me_outlined,
-              size: 10, color: AppColors.primary),
+          const Icon(
+            Icons.near_me_outlined,
+            size: 10,
+            color: AppColors.primary,
+          ),
           const SizedBox(width: 4),
           Text(
             text,

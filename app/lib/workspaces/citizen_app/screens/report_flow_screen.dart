@@ -285,7 +285,9 @@ class _ReportFlowScreenState extends ConsumerState<ReportFlowScreen> {
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2),
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('Kirim Laporan'),
                       )
@@ -365,8 +367,11 @@ class _ReportFlowScreenState extends ConsumerState<ReportFlowScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.camera_alt,
-                            size: 48, color: AppColors.textSecondary),
+                        Icon(
+                          Icons.camera_alt,
+                          size: 48,
+                          color: AppColors.textSecondary,
+                        ),
                         SizedBox(height: 8),
                         Text(
                           'Belum ada foto',
@@ -491,8 +496,7 @@ class _ReportFlowScreenState extends ConsumerState<ReportFlowScreen> {
                 return ChoiceChip(
                   label: Text(name),
                   selected: isActive,
-                  onSelected: (_) =>
-                      setState(() => _selectedCategoryId = id),
+                  onSelected: (_) => setState(() => _selectedCategoryId = id),
                   selectedColor: AppColors.primary,
                   labelStyle: TextStyle(
                     fontSize: 11,
@@ -571,8 +575,7 @@ class _ReportFlowScreenState extends ConsumerState<ReportFlowScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.check_circle,
-              size: 80, color: AppColors.success),
+          const Icon(Icons.check_circle, size: 80, color: AppColors.success),
           const SizedBox(height: 16),
           const Text(
             'Laporan Terkirim!',
@@ -597,19 +600,13 @@ class _ReportFlowScreenState extends ConsumerState<ReportFlowScreen> {
             'Status awalnya "Pending". Admin akan memverifikasi dalam '
             'waktu dekat.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
             ),
             onPressed: () => context.go('/citizen'),
             icon: const Icon(Icons.home_outlined),
@@ -654,10 +651,7 @@ class _GpsCard extends StatelessWidget {
             SizedBox(width: 12),
             Text(
               'Mendeteksi koordinat...',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.primary,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.primary),
             ),
           ],
         ),
@@ -677,16 +671,10 @@ class _GpsCard extends StatelessWidget {
             Expanded(
               child: Text(
                 error!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.error,
-                ),
+                style: const TextStyle(fontSize: 12, color: AppColors.error),
               ),
             ),
-            TextButton(
-              onPressed: onRetry,
-              child: const Text('Coba lagi'),
-            ),
+            TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
           ],
         ),
       );
@@ -713,10 +701,7 @@ class _GpsCard extends StatelessWidget {
               ),
             ),
           ),
-          TextButton(
-            onPressed: onRetry,
-            child: const Text('Refresh'),
-          ),
+          TextButton(onPressed: onRetry, child: const Text('Refresh')),
         ],
       ),
     );

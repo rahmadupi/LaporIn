@@ -53,8 +53,7 @@ extension on _Filter {
   }
 }
 
-class _CitizenLaporanScreenState
-    extends ConsumerState<CitizenLaporanScreen> {
+class _CitizenLaporanScreenState extends ConsumerState<CitizenLaporanScreen> {
   _Filter _filter = _Filter.semua;
   String _query = '';
   final _searchController = TextEditingController();
@@ -165,8 +164,11 @@ class _CitizenLaporanScreenState
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Icon(Icons.public,
-                            size: 64, color: AppColors.textSecondary),
+                        Icon(
+                          Icons.public,
+                          size: 64,
+                          color: AppColors.textSecondary,
+                        ),
                         SizedBox(height: 12),
                         Text(
                           'Belum ada laporan publik di area Anda.',

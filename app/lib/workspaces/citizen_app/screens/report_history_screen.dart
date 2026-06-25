@@ -167,8 +167,11 @@ class _ReportHistoryScreenState extends ConsumerState<ReportHistoryScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Icon(Icons.history,
-                            size: 64, color: AppColors.textSecondary),
+                        Icon(
+                          Icons.history,
+                          size: 64,
+                          color: AppColors.textSecondary,
+                        ),
                         SizedBox(height: 12),
                         Text(
                           'Belum ada laporan. Yuk buat yang pertama!',
@@ -223,9 +226,7 @@ class _ReportHistoryScreenState extends ConsumerState<ReportHistoryScreen> {
     if (actions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Tidak ada aksi tersedia untuk status ini.',
-          ),
+          content: Text('Tidak ada aksi tersedia untuk status ini.'),
         ),
       );
       return;
@@ -262,11 +263,10 @@ class _ReportHistoryScreenState extends ConsumerState<ReportHistoryScreen> {
             ...actions.map(
               (a) => ListTile(
                 leading: Icon(a.icon, color: a.color),
-                title: Text(a.label,
-                    style: TextStyle(
-                      color: a.color,
-                      fontWeight: FontWeight.w600,
-                    )),
+                title: Text(
+                  a.label,
+                  style: TextStyle(color: a.color, fontWeight: FontWeight.w600),
+                ),
                 onTap: () async {
                   Navigator.pop(ctx);
                   await a.onTap();
@@ -288,38 +288,45 @@ class _ReportHistoryScreenState extends ConsumerState<ReportHistoryScreen> {
   List<_Action> _availableActions(ReportEntity r) {
     final actions = <_Action>[];
     if (r.status == ReportStatus.pending) {
-      actions.add(_Action(
-        label: 'Edit Deskripsi',
-        icon: Icons.edit_outlined,
-        color: AppColors.primary,
-        onTap: () => _editDescription(r),
-      ));
-      actions.add(_Action(
-        label: 'Hapus Laporan',
-        icon: Icons.delete_outline,
-        color: AppColors.error,
-        onTap: () => _confirmDelete(r),
-      ));
+      actions.add(
+        _Action(
+          label: 'Edit Deskripsi',
+          icon: Icons.edit_outlined,
+          color: AppColors.primary,
+          onTap: () => _editDescription(r),
+        ),
+      );
+      actions.add(
+        _Action(
+          label: 'Hapus Laporan',
+          icon: Icons.delete_outline,
+          color: AppColors.error,
+          onTap: () => _confirmDelete(r),
+        ),
+      );
     }
     if (r.status == ReportStatus.rejected) {
-      final ageHours =
-          DateTime.now().difference(r.updatedAt).inHours;
+      final ageHours = DateTime.now().difference(r.updatedAt).inHours;
       if (ageHours <= 24) {
-        actions.add(_Action(
-          label: 'Ajukan Banding',
-          icon: Icons.gavel_outlined,
-          color: AppColors.accent,
-          onTap: () => _appeal(r),
-        ));
+        actions.add(
+          _Action(
+            label: 'Ajukan Banding',
+            icon: Icons.gavel_outlined,
+            color: AppColors.accent,
+            onTap: () => _appeal(r),
+          ),
+        );
       }
     }
     if (r.status == ReportStatus.resolved) {
-      actions.add(_Action(
-        label: 'Beri Rating',
-        icon: Icons.star_outline,
-        color: AppColors.accent,
-        onTap: () => _rate(r),
-      ));
+      actions.add(
+        _Action(
+          label: 'Beri Rating',
+          icon: Icons.star_outline,
+          color: AppColors.accent,
+          onTap: () => _rate(r),
+        ),
+      );
     }
     return actions;
   }
@@ -353,9 +360,9 @@ class _ReportHistoryScreenState extends ConsumerState<ReportHistoryScreen> {
           .read(reportRepositoryProvider)
           .updateDescription(r.reportId, result);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Deskripsi diperbarui.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Deskripsi diperbarui.')));
     } catch (e) {
       if (!mounted) return;
       _snackError('Gagal memperbarui: $e');
@@ -435,9 +442,7 @@ class _ReportHistoryScreenState extends ConsumerState<ReportHistoryScreen> {
     );
     if (reason == null || reason.isEmpty || !mounted) return;
     try {
-      await ref
-          .read(reportRepositoryProvider)
-          .submitAppeal(r.reportId, reason);
+      await ref.read(reportRepositoryProvider).submitAppeal(r.reportId, reason);
       if (!mounted) return;
       _snackSuccess('Banding dikirim. Menunggu tinjauan admin.');
     } catch (e) {
@@ -500,7 +505,9 @@ class _ReportHistoryScreenState extends ConsumerState<ReportHistoryScreen> {
     );
     if (result != true || stars == 0 || !mounted) return;
     try {
-      await ref.read(reportRepositoryProvider).submitRating(
+      await ref
+          .read(reportRepositoryProvider)
+          .submitRating(
             reportId: r.reportId,
             reporterId: uid,
             stars: stars,
