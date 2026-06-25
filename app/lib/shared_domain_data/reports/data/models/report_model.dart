@@ -22,15 +22,15 @@ class ReportModel {
     final data = doc.data() as Map<String, dynamic>;
 
     // --- displayId: displayId → reportId → doc.id ---
-    final displayId = (data['displayId'] as String?) ??
+    final displayId =
+        (data['displayId'] as String?) ??
         (data['reportId'] as String?) ??
         doc.id;
 
     // --- photos: dukung `photos`, `photoUrls`, dan `imageUrls` ---
     final photosRaw = data['photos'] ?? data['photoUrls'] ?? data['imageUrls'];
-    final photos = (photosRaw as List<dynamic>?)
-            ?.map((e) => e.toString())
-            .toList() ??
+    final photos =
+        (photosRaw as List<dynamic>?)?.map((e) => e.toString()).toList() ??
         const <String>[];
 
     // --- geo: dukung `geo` (GeoPoint) dan `location` (map) ---
@@ -71,8 +71,8 @@ class ReportModel {
     }
 
     // --- severity: dukung `severity` dan `urgencyLevel` ---
-    final severityRaw = (data['severity'] as String?) ??
-        (data['urgencyLevel'] as String?);
+    final severityRaw =
+        (data['severity'] as String?) ?? (data['urgencyLevel'] as String?);
 
     return ReportEntity(
       reportId: doc.id,
@@ -92,10 +92,8 @@ class ReportModel {
       assignedOfficerId: data['assignedOfficerId'] as String?,
       dispatchedAt: (data['dispatchedAt'] as Timestamp?)?.toDate(),
       resolvedAt: (data['resolvedAt'] as Timestamp?)?.toDate(),
-      createdAt:
-          (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt:
-          (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -103,8 +101,9 @@ class ReportModel {
   static Map<String, dynamic> toFirestore(ReportEntity report) {
     return {
       'reportId': report.reportId,
-      'displayId':
-          report.displayId.isNotEmpty ? report.displayId : report.reportId,
+      'displayId': report.displayId.isNotEmpty
+          ? report.displayId
+          : report.reportId,
       'reporterId': report.reporterId,
       'isAnonymous': report.isAnonymous,
       'description': report.description,
@@ -118,7 +117,8 @@ class ReportModel {
       'severity': report.severity.value,
       'status': report.status.value,
       if (report.photoUrls.isNotEmpty) 'photos': report.photoUrls,
-      if (report.beforePhotoUrl != null) 'beforePhotoUrl': report.beforePhotoUrl,
+      if (report.beforePhotoUrl != null)
+        'beforePhotoUrl': report.beforePhotoUrl,
       if (report.afterPhotoUrl != null) 'afterPhotoUrl': report.afterPhotoUrl,
       'geo': GeoPoint(report.latitude, report.longitude),
       'address': report.address,
