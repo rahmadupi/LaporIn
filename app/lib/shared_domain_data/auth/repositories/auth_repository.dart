@@ -84,7 +84,21 @@ class AuthRepository {
           'status': newStatus,
           'isAvailable': entity.role == UserRole.officer,
         });
-        // Update entity lokal
+
+        // Officer yang baru saja verifikasi email berpindah ke status
+        // "pending" dan masih menunggu approval admin. Mereka BELUM
+        // boleh login sampai admin approve (lihat SRS officer-overview
+        // §4 Scenario 1 + auth_session.md "Pending Officer Gate").
+        // Sign-out + throw agar UI menampilkan _PendingOfficerBanner.
+        if (entity.role == UserRole.officer) {
+          await _auth.signOut();
+          throw const AuthFailure(
+            'Akun Anda masih menunggu persetujuan Admin.',
+            code: AuthErrorCode.pendingOfficer,
+          );
+        }
+
+        // Untuk citizen/admin, transisi status melengkapi login.
         final updatedEntity = entity.copyWith(status: newStatus);
         return updatedEntity;
       }
@@ -92,7 +106,10 @@ class AuthRepository {
       // Validasi status user
       if (entity.isPendingOfficer) {
         await _auth.signOut();
-        throw const AuthFailure('Akun Anda masih menunggu persetujuan Admin.');
+        throw const AuthFailure(
+          'Akun Anda masih menunggu persetujuan Admin.',
+          code: AuthErrorCode.pendingOfficer,
+        );
       }
 
       if (entity.isBanned) {
@@ -232,6 +249,59 @@ class AuthRepository {
     await _auth.signOut();
     // Tunggu sebentar agar authStateProvider stream emit null
     await Future.delayed(const Duration(milliseconds: 200));
+  }
+
+  /// Hapus akun milik sendiri: hapus dokumen `/users/{uid}` di Firestore,
+  /// lalu hapus user dari Firebase Auth.
+  ///
+  /// PERHATIAN: FirebaseAuth `currentUser.delete()` membutuhkan re-login
+  /// jika sesi terlalu lama (umumnya > 5 menit). Caller harus menangani
+  /// `requires-recent-login` dengan meminta user login ulang.
+  ///
+  /// Implementasi production-grade idealnya dilakukan via Cloud Function
+  /// agar token admin digunakan untuk delete user (tidak butuh re-login).
+  /// Saat ini method ini best-effort: Firestore selalu dihapus, Auth user
+  /// di-delete jika sesi masih valid.
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AuthFailure(
+        'Sesi login tidak ditemukan. Silakan login ulang.',
+        code: AuthErrorCode.userNotFound,
+      );
+    }
+
+    // 1. Hapus dokumen profil di Firestore (best-effort).
+    try {
+      await _db.collection('users').doc(user.uid).delete();
+    } catch (_) {
+      // Firestore delete gagal bukan blocker — kita tetap lanjut hapus
+      // Auth user agar akun benar-benar hilang dari sistem auth.
+    }
+
+    // 2. Hapus user dari Firebase Auth.
+    try {
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        throw const AuthFailure(
+          'Sesi login Anda sudah terlalu lama. Silakan logout lalu login '
+          'kembali sebelum menghapus akun.',
+          code: AuthErrorCode.requiresRecentLogin,
+        );
+      }
+      throw AuthFailure.fromCode(e.code);
+    }
+  }
+
+  /// Update field `fcmToken` di `/users/{uid}`. Null = nonaktifkan push
+  /// notification; non-null = daftarkan token untuk menerima push.
+  Future<void> updateFcmToken(String? token) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    await _db.collection('users').doc(user.uid).update({
+      'fcmToken': token,
+    });
   }
 
   /// Mengambil role user dari dokumen Firestore.

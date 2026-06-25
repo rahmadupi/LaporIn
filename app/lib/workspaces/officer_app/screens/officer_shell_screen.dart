@@ -6,6 +6,7 @@ import 'package:laporin/shared/ui/back_press_handler.dart';
 import 'package:laporin/shared/ui/role_scaffold.dart';
 import 'package:laporin/shared/ui/under_construction_page.dart';
 import 'package:laporin/shared_domain_data/auth/providers/auth_providers.dart';
+import 'officer_profile_screen.dart';
 
 /// Main shell untuk Officer workspace.
 /// 5 tabs: TAB 1 - TAB 5.
@@ -37,17 +38,13 @@ class _OfficerShellScreenState extends ConsumerState<OfficerShellScreen> {
       title: 'LaporIn - Petugas',
       userName: user?.fullName ?? 'Petugas',
       userRole: 'officer',
+      notificationRoute: AppRoutes.officerNotifications,
       onLogout: _logout,
       tabs: const [
         RoleTab(
-          label: 'TAB 1',
+          label: 'Tugas',
           icon: Icons.dashboard_outlined,
-          body: UnderConstructionPage(role: 'Officer', pageName: 'TAB 1'),
-        ),
-        RoleTab(
-          label: 'TAB 2',
-          icon: Icons.list_alt_outlined,
-          body: UnderConstructionPage(role: 'Officer', pageName: 'TAB 2'),
+          body: UnderConstructionPage(role: 'Officer', pageName: 'Tugas'),
         ),
         RoleTab(
           label: 'Peta',
@@ -55,19 +52,19 @@ class _OfficerShellScreenState extends ConsumerState<OfficerShellScreen> {
           body: UnderConstructionPage(role: 'Officer', pageName: 'Peta'),
         ),
         RoleTab(
-          label: 'TAB 4',
-          icon: Icons.history,
-          body: UnderConstructionPage(role: 'Officer', pageName: 'TAB 4'),
+          label: 'Laporan',
+          icon: Icons.description_outlined,
+          body: UnderConstructionPage(role: 'Officer', pageName: 'Laporan'),
         ),
         RoleTab(
-          label: 'Notifikasi',
-          icon: Icons.notifications_outlined,
-          body: UnderConstructionPage(role: 'Officer', pageName: 'Notifikasi'),
+          label: 'Riwayat',
+          icon: Icons.history,
+          body: UnderConstructionPage(role: 'Officer', pageName: 'Riwayat'),
         ),
         RoleTab(
           label: 'Profil',
           icon: Icons.person_outline,
-          body: UnderConstructionPage(role: 'Officer', pageName: 'Profil'),
+          body: OfficerProfileScreen(),
         ),
       ],
     );

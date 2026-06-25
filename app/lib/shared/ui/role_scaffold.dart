@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:laporin/core/theme/app_colors.dart';
 
 /// Scaffold generik dengan BottomNavigationBar + AppBar actions untuk role-based app.
@@ -10,6 +11,7 @@ class RoleScaffold extends StatefulWidget {
     required this.userName,
     required this.userRole,
     this.onLogout,
+    this.notificationRoute,
   });
 
   /// Judul halaman (mis. "LaporIn - Admin").
@@ -26,6 +28,10 @@ class RoleScaffold extends StatefulWidget {
 
   /// Callback untuk logout button di AppBar.
   final VoidCallback? onLogout;
+
+  /// Path tujuan ketika user tap bell icon di AppBar. Null = bell button
+  /// tidak ditampilkan. Biasanya diisi dengan `AppRoutes.<role>Notifications`.
+  final String? notificationRoute;
 
   @override
   State<RoleScaffold> createState() => RoleScaffoldState();
@@ -66,18 +72,14 @@ class RoleScaffoldState extends State<RoleScaffold> {
         // Hilangkan tombol back otomatis - kita handle sendiri via PopScope
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: 'Notifikasi',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Halaman Notifikasi sedang dikembangkan'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-          ),
+          if (widget.notificationRoute != null)
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              tooltip: 'Notifikasi',
+              onPressed: () {
+                context.push(widget.notificationRoute!);
+              },
+            ),
           if (widget.onLogout != null)
             IconButton(
               icon: const Icon(Icons.logout),

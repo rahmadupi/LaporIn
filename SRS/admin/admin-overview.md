@@ -3,15 +3,15 @@
 ### Functional Requirements (FR) - Admin Layer
 
 | ID          | Deskripsi Kebutuhan                                                                                                                                                                         | Target Implementasi (Serverless)                                                                 |
-| :---------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------- | ------------------------------------------------------ |
+| :---------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | **ADM-001** | Akun admin dibuat secara khusus melalui form/metode internal terproteksi.                                                                                                                   | Firebase Auth Custom Claims (`isAdmin: true`)                                                    |
 | **ADM-002** | Admin dapat melihat daftar semua laporan warga dengan status `Pending`, `In Review`, `Dispatched`, dan `In Progress` (menunggu respons).                                                    | Real-time Stream Queries pada Firestore                                                          |
 | **ADM-003** | Admin dapat melakukan penolakan (`Rejected`) terhadap laporan yang tidak valid.                                                                                                             | Firestore Document Update                                                                        |
 | **ADM-004** | Admin dapat menerima laporan untuk masuk ke dalam proses review (`In Review`).                                                                                                              | Firestore Document Update                                                                        |
 | **ADM-005** | Admin dapat melakukan penugasan (_dispatch_) petugas lapangan melalui Form Dispatch khusus.                                                                                                 | Pembuatan dokumen baru di sub-koleksi `/dispatches`                                              |
-| **ADM-006** | Admin dapat melihat seluruh komentar dari warga pada detail laporan.                                                                                                                        | Real-time Stream `/reports/{id}/comments`                                                        |
-| **ADM-007** | Admin dapat memberi komentar atau membalas komentar langsung pada laporan.                                                                                                                  | Write operation ke sub-koleksi `/comments`                                                       |
-| **ADM-008** | Admin memiliki hak moderasi penuh untuk membatasi atau menghapus komentar yang melanggar aturan.                                                                                            | Firestore Delete operation (Diizinkan via Security Rules)                                        |
+| **ADM-006** | _(REMOVED — public comment system dropped. See [`feature/comment_moderation.md`](./feature/comment_moderation.md).)_                                                                        | —                                                                                                |
+| **ADM-007** | _(REMOVED — see comment_moderation.md.)_                                                                                                                                                    | —                                                                                                |
+| **ADM-008** | _(REMOVED — see comment_moderation.md.)_                                                                                                                                                    | —                                                                                                |
 | **ADM-009** | Admin dapat melakukan filter laporan berdasarkan 4 tingkatan lokasi (Provinsi, Kota, Desa, dan Radius Geohash berdasarkan Pin koordinat).                                                   | Gabungan Firestore compound queries & Geoflutterfire                                             |
 | **ADM-010** | Admin dapat melakukan filter laporan berdasarkan Tingkat Urgensi dan Identitas Pengguna (Anonim vs Publik).                                                                                 | Firestore Query Filtering                                                                        |
 | **ADM-011** | Admin dapat melihat list ajuan diri petugas pada halaman laporan.                                                                                                                           | Real-time Stream Queries pada Firestore                                                          |
@@ -25,8 +25,9 @@
 | **ADM-019** | Admin dapat melakukan pemblokiran (ban/suspend) terhadap akun warga yang terbukti melakukan spam laporan palsu. (Tambahan)Cloud Functions (Update Firebase Auth status & Firestore status)  | Firestore Update pada koleksi global /settings/categories                                        |
 | **ADM-020** | Admin dapat mengelola kategori pelaporan infrastruktur (menambah, menonaktifkan kategori seperti Jalan, Drainase, dll). (Tambahan)Firestore Update pada koleksi global /settings/categories | Firestore Update pada koleksi global /settings/categories                                        |
 | **ADM-021** | Admin dapat Log Out dari akun admin.                                                                                                                                                        | Firebase Auth Sign Out + Clear Local Storage                                                     |
-| **ADM-022** | Admin dapat menghapus (delete) akun admin sendiri.                                                                                                                                          | Firebase Auth Account Delete + Firestore User Profile Delete                                     |                                                        | **ADM-023** | Admin dapat melihat daftar appeals (banding) dari warga yang laporan ditolak. | Firestore Query `where("appealRequested", "==", true)` |
-| **ADM-024** | Admin dapat menerima atau menolak appeal warga.                                                                                                                                             | Firestore Document Update (Accept: status → in_review, Reject: appealRequested → false)          |
+| **ADM-022** | Admin dapat menghapus (delete) akun admin sendiri.                                                                                                                                          | Firebase Auth Account Delete + Firestore User Profile Delete                                     |
+| **ADM-023** | _(REMOVED — banding/appeal workflow dropped. See [`feature/report_moderation.md`](./feature/report_moderation.md).)_                                                                        | —                                                                                                |
+| **ADM-024** | _(REMOVED — see report_moderation.md.)_                                                                                                                                                     | —                                                                                                |
 | **ADM-025** | Admin dapat melihat daftar pengguna yang diblokir (banned).                                                                                                                                 | Firestore Query `where("status", "==", "banned")`                                                |
 | **ADM-026** | Admin dapat melakukan unbanned (membuka blokir) pengguna yang sebelumnya diblokir.                                                                                                          | Firestore Document Update `status: "active"`                                                     |
 
@@ -47,9 +48,9 @@
 - **BR-ADM-001 (Presentation Anonymity):** Laporan yang ditandai sebagai "Anonim" oleh warga hanya disembunyikan identitasnya pada _Presentation Layer_ (Antarmuka Flutter). _Data Layer_ (Firestore) tetap menyimpan `reporterId` asli untuk kebutuhan relasi data, audit sistem, dan pengiriman push notification target ke pengirim asli ketika status laporan berubah.
 
 - **BR-ADM-002 (Role-Based Access Control):**
-  - **Admin:** Hanya dapat moderate report & comment, assign officer, manage categories, view analytics. Admin TIDAK dapat membuat report atau bertindak sebagai officer.
+  - **Admin:** Hanya dapat moderate report, assign officer, manage users (ban/unban/approve), manage categories, view analytics. Admin TIDAK dapat membuat report atau bertindak sebagai officer.
   - **Officer:** Hanya dapat melihat dan mengerjakan dispatch yang ditugaskan, update status laporan, upload bukti perbaikan.
-  - **Citizen:** Hanya dapat membuat report, komentar, dan melihat status laporan milik sendiri.
+  - **Citizen:** Hanya dapat membuat report dan melihat status laporan milik sendiri.
 
 ### Aturan Keamanan per Role (Security Rules)
 
@@ -59,30 +60,44 @@
 | Accept/Reject laporan | ✅ Ya    | ❌ Tidak | ❌ Tidak |
 | Dispatch officer      | ✅ Ya    | ❌ Tidak | ❌ Tidak |
 | Menerima dispatch     | ❌ Tidak | ✅ Ya    | ❌ Tidak |
-| Moderasi komentar     | ✅ Ya    | ❌ Tidak | ❌ Tidak |
-| Ban user              | ✅ Ya    | ❌ Tidak | ❌ Tidak |
+| Ban / Unban user      | ✅ Ya    | ❌ Tidak | ❌ Tidak |
+| Approve officer       | ✅ Ya    | ❌ Tidak | ❌ Tidak |
 | View analytics        | ✅ Ya    | ❌ Tidak | ❌ Tidak |
 | Manage categories     | ✅ Ya    | ❌ Tidak | ❌ Tidak |
 
 ### Page Content & UI/UX Notes
 
-- **Admin Dashboard:**:
-  - Halaman utama dengan ringkasan statistik laporan (jumlah laporan per status, grafik tren laporan, dll).
-  - Minimap Heatmap untuk visualisasi konsentrasi laporan berdasarkan lokasi geografis.
-  - Shortcut untuk filter laporan berdasarkan status, tingkat urgensi. Pada laporan yang belum diproses.
-  - Detail laporan dengan informasi lengkap, foto, komentar warga, dan tombol aksi (Accept, Reject). Note tombol accept merubah status laporan menjadi `In review` dan merubah tombol accept menjadi dispatch yang mengarah pada form dispatch untuk memilih petugas lapangan yang akan ditugaskan.
-  - Fitur moderasi komentar dengan opsi untuk menghapus komentar yang tidak sesuai pada halaman detail laporan.
+- **Admin Dashboard:** (lihat [`feature/dashboard_analytics.md`](./feature/dashboard_analytics.md)):
+  - **Stat Cards (2×2):** Laporan Masuk · Laporan Diverifikasi · Pengguna Aktif · Petugas Aktif (semua via Firestore `getCountFromServer()`).
+  - **Priority Alerts ("Perlu Perhatian Anda"):** 4 tier dengan **threshold tetap**, deskripsi = **overview generik** (bukan alasan/instruksi) —
+    - 🔴 **KRITIS** — `pending` + `urgencyLevel = "critical"` + `createdAt < now - 1h` — _"Permasalahan sangat besar pada keselamatan publik"_
+    - 🟠 **TINGGI** — `in_progress` + `urgencyLevel = "high"` + `dispatchedAt < now - 36h` (75% dari SLA 48h) — _"Permasalahan besar pada lingkungan dan keselamatan"_
+    - 🟡 **SEDANG** — `in_review` + `urgencyLevel = "medium"` + `updatedAt < now - 24h` — _"Permasalahan sedang pada infrastruktur"_
+    - 🟢 **RENDAH** — `pending` + `urgencyLevel = "low"` + `createdAt < now - 24h` — _"Permasalahan ringan"_
+  - Tap priority row → masuk ke **Moderasi → Laporan** dengan filter chip + urgency sudah ter-applied.
+  - Shortcut ke **Moderasi → Pengguna** untuk ban/unban, approval officer, reaktivasi akun dormant (lihat [`feature/user_moderation.md`](./feature/user_moderation.md)).
+  - Detail laporan mengikuti spec di [`feature/report_detail_page.md`](./feature/report_detail_page.md) — hero image, status roadmap, lokasi, deskripsi, **Penyelesaian**, dan bottom action bar `[ Tolak ] [ Terima ]` (Terima → Dispatch Form).
+  - Status dapat diubah melalui dropdown di samping badge status (lihat [`feature/report_status_management.md`](./feature/report_status_management.md)).
   - Notifikasi real-time untuk laporan baru dan update status laporan yang sedang diproses.
 
-- **Admin Laporan:**:
-  - [SUBSECTION] Report List
-  - Tampilan daftar laporan dengan opsi filter dan pencarian.
-  - Setiap item laporan menampilkan informasi singkat (judul, lokasi, status, tingkat urgensi) dan opsi untuk melihat detail laporan.
-  - Detail laporan dengan informasi lengkap, foto, komentar warga, dan tombol aksi (Accept, Reject). Note tombol accept merubah status laporan menjadi `In review` dan merubah tombol accept menjadi dispatch yang mengarah pada form dispatch untuk memilih petugas lapangan yang akan ditugaskan.
-  - Fitur untuk melihat riwayat komentar dan interaksi terkait laporan tersebut.
-  - Fitur sorting komen
-  - Opsi untuk menambahkan catatan internal yang hanya dapat dilihat oleh admin lain (tidak terlihat oleh warga).
-  - [SUBSECTION] Report Controller, Menambah kategori laporan
+- **Admin Moderasi (Laporan + Pengguna):**:
+  Halaman Moderasi memiliki **2 sub-page** yang diakses via tab switcher di bagian atas:
+
+  #### Sub-page 1: Laporan (lihat [`feature/report_moderation.md`](./feature/report_moderation.md))
+  - **Detailed list** dengan baris yang cukup besar untuk menampilkan ringkasan laporan + tombol **Accept** dan **Reject** inline ketika status = `pending`.
+  - Filter chips: `Semua`, `Menunggu`, `Diproses`, `Selesai`, `Ditolak`. Filter tambahan: urgensi, anonimitas, radius geohash.
+  - Tap baris (di luar tombol) → membuka [Detail Laporan](./feature/report_detail_page.md).
+  - Tombol **Accept** pada baris `pending` → set status `in_review` + membuka **Dispatch Form** (officer picker).
+  - Tombol **Reject** pada baris `pending` → Reject Dialog (isi `rejectComment`, opsional `duplicateOfId`).
+  - **Tidak ada** alur banding/appeal lagi — sudah dihapus.
+  - **Tidak ada** komentar publik / catatan internal — sudah dihapus (lihat [`feature/comment_moderation.md`](./feature/comment_moderation.md)).
+
+  #### Sub-page 2: Pengguna (lihat [`feature/user_moderation.md`](./feature/user_moderation.md))
+  - Empat tab internal: **Aktif**, **Diblokir**, **Persetujuan**, **Dormant**.
+  - **Aktif**: daftar user aktif, tombol **Ban** dengan dialog alasan.
+  - **Diblokir**: daftar user banned, tombol **Unban**.
+  - **Persetujuan**: officer dengan `status: "pending"`, tombol **Setujui** / **Tolak**.
+  - **Dormant**: akun `inActive`, tombol **Reactivate**.
 
 - **Admin Peta:**:
   - Tampilan peta interaktif dengan marker untuk setiap laporan yang masuk, berwarna berdasarkan status laporan (misal: merah untuk Pending, kuning untuk In Review, hijau untuk Resolved).

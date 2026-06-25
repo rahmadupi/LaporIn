@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 
 /// A summary metric card used in the dashboard grid.
 ///
-/// Renders a small accent-coloured icon above the metric value and the metric
-/// label below it.
+/// Layout (top to bottom):
+/// - Small accent-coloured icon badge (top-left)
+/// - Large metric value (middle, FittedBox to shrink if too big)
+/// - Short label (bottom, max 2 lines + ellipsis)
+///
+/// Designed to gracefully handle long labels like "Total Laporan
+/// Diverifikasi" without overflowing on narrow grid cells.
 class StatCard extends StatelessWidget {
   const StatCard({
     super.key,
@@ -28,7 +33,7 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -43,30 +48,43 @@ class StatCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Icon badge
           Container(
-            width: 36,
-            height: 36,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: iconColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: iconColor, size: 20),
+            child: Icon(icon, color: iconColor, size: 18),
           ),
-          const SizedBox(height: 24),
-          Text(
-            value ?? '—',
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
+
+          // Value (shrinks via FittedBox to avoid horizontal overflow)
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value ?? '—',
+              maxLines: 1,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827),
+                height: 1.1,
+              ),
             ),
           ),
-          const SizedBox(height: 4),
+
+          // Label (wraps to 2 lines max with ellipsis)
           Text(
             label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 12,
+              height: 1.25,
               color: Colors.grey.shade600,
             ),
           ),

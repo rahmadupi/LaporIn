@@ -2,20 +2,26 @@
 
 ## 1. Overview
 
-The Report Status Management module allows **Admins** to change the lifecycle status of a report directly from the Report Detail page via a dropdown selector. This complements the existing Report Moderation workflow (which uses Accept/Reject buttons) by providing a **quick, flexible way** to transition a report through its lifecycle stages.
+The Report Status Management module allows **Admins** (all statuses) and **Officers** (only on reports assigned to them) to change the lifecycle status of a report directly from the [Report Detail Page](./report_detail_page.md) via a status dropdown.
 
-**Key Difference from Report Moderation:**
+The dropdown sits beside the status badge on the Detail page and complements the **Accept** button on `pending` reports (which is a quick path that also opens the Dispatch Form — see [`report_moderation.md`](./report_moderation.md) Section 3.4).
 
-- `report_moderation.md` → Accept/Reject buttons (initial review)
-- `report_status_management.md` → Dropdown to change status (any lifecycle stage)
+**Visibility:**
+
+| Role    | Sees dropdown? | Constraint                                                                       |
+| ------- | -------------- | -------------------------------------------------------------------------------- |
+| Admin   | Yes            | All reports.                                                                     |
+| Officer | Yes            | Only reports where `assignedOfficerId == currentUid`. **Same options as Admin.** |
+| Citizen | No             | —                                                                                |
 
 ## 2. Traceability
 
-- **FRs Covered:** ADM-003, ADM-004, ADM-005, ADM-006, ADM-017
+- **FRs Covered:** ADM-003, ADM-004, ADM-005, ADM-006, ADM-017, OFC-005, OFC-007, OFC-008
 - **Related Modules:**
-  - `report_moderation.md` (initial Accept/Reject)
-  - `dispatch_workflow.md` (officer assignment)
-  - `notification_center.md` (citizen FCM notification on status change)
+  - [`report_detail_page.md`](./report_detail_page.md) — where the dropdown is rendered
+  - [`report_moderation.md`](./report_moderation.md) — inline Accept/Reject on the list, plus the Laporan/Pengguna Moderation shell
+  - [`dispatch_workflow.md`](./dispatch_workflow.md) — opened when transitioning to `dispatched`
+  - [`notification_center.md`](./notification_center.md) — citizen FCM notification on status change
 - **Business Rules:**
   - BR-ADM-001 (Anonymity)
   - BR-ADM-002 (Status Transition Validation)
@@ -23,36 +29,32 @@ The Report Status Management module allows **Admins** to change the lifecycle st
 
 ## 3. UI/UX Requirements
 
-### 3.1 Status Dropdown Location
+### 3.1 Dropdown Location
 
-The status dropdown is displayed on the **Report Detail page**, positioned:
+The status dropdown is rendered on the **Report Detail Page**, in the title block beside the status badge:
 
-- Top-right corner of the page (above the report image)
-- Visible on both mobile and tablet layouts
-- Color-coded based on current status (see Section 3.3)
+```
+Jalan Rusak                          [● Menunggu Verif. ▼]
+LPR-2026-2553449 • 25 Jun 2026, 03:02
+```
 
-### 3.2 Dropdown Behavior
+- Tapping the badge OR the `▼` opens a **bottom sheet menu** with valid next statuses.
+- For each option: status label (Bahasa Indonesia), icon, brief description.
 
-- **Trigger:** Tap on the status badge → opens a bottom sheet menu
-- **Options shown:** Only valid next statuses (state machine validation)
-- **Each option shows:**
-  - Status label (in Bahasa Indonesia)
-  - Status icon
-  - Brief description of the action
-- **Confirmation:** Some transitions require a confirmation dialog (e.g., REJECTED needs a reason)
+### 3.2 Status Colors & Labels
 
-### 3.3 Status Colors & Labels
+The 5 main statuses map to the **Status Roadmap** in [report_detail_page.md](./report_detail_page.md) Section 3.2:
 
-| Status        | Color               | Indonesian Label    | Description              |
-| ------------- | ------------------- | ------------------- | ------------------------ |
-| `pending`     | 🟠 Orange (#F59E0B) | "Menunggu Review"   | Laporan baru masuk       |
-| `in_review`   | 🔵 Blue (#3B82F6)   | "Sedang Ditinjau"   | Admin sedang review      |
-| `dispatched`  | 🟣 Purple (#8B5CF6) | "Sudah Didisposisi" | Petugas sudah ditugaskan |
-| `in_progress` | 🟡 Yellow (#EAB308) | "Sedang Dikerjakan" | Petugas di lapangan      |
-| `resolved`    | 🟢 Green (#10B981)  | "Selesai"           | Laporan selesai          |
-| `rejected`    | 🔴 Red (#EF4444)    | "Ditolak"           | Laporan tidak valid      |
+| Status        | Color               | Indonesian Label      | Roadmap node                                        |
+| ------------- | ------------------- | --------------------- | --------------------------------------------------- |
+| `pending`     | 🟠 Orange (#F59E0B) | "Menunggu Verifikasi" | 1 — Laporan Terkirim                                |
+| `in_review`   | 🔵 Blue (#3B82F6)   | "Verifikasi"          | 2 — Verifikasi (Sedang berlangsung)                 |
+| `dispatched`  | 🟣 Purple (#8B5CF6) | "Penugasan"           | 3 — Penugasan                                       |
+| `in_progress` | 🟡 Yellow (#EAB308) | "Pengerjaan"          | 4 — Pengerjaan                                      |
+| `resolved`    | 🟢 Green (#10B981)  | "Selesai"             | 5 — Selesai                                         |
+| `rejected`    | 🔴 Red (#EF4444)    | "Ditolak"             | (replaces roadmap — see Section 3.2 of detail page) |
 
-### 3.4 Valid Status Transitions (State Machine)
+### 3.3 Valid Status Transitions (State Machine)
 
 ```
 pending ──> in_review ──> dispatched ──> in_progress ──> resolved
@@ -60,23 +62,28 @@ pending ──> in_review ──> dispatched ──> in_progress ──> resolve
    │           │              │              │
    └──> rejected <────────────┴──────────────┘
             │
-            └──> in_review (jika appeal diterima)
+            └──> in_review (admin re-open only)
 ```
 
 **Detailed rules:**
 
 - From `pending`: → `in_review`, `rejected`
 - From `in_review`: → `dispatched`, `rejected`
-- From `dispatched`: → `in_progress`, `in_review` (un-dispatch)
+- From `dispatched`: → `in_progress`, `in_review` (un-dispatch, admin only)
 - From `in_progress`: → `resolved`, `dispatched` (re-dispatch)
-- From `resolved`: (terminal, no transitions)
-- From `rejected`: → `in_review` (only via appeal acceptance)
+- From `resolved`: terminal (no transitions)
+- From `rejected`: → `in_review` (admin re-open only)
 
-### 3.5 Required Comments for Certain Transitions
+### 3.4 Required Comments / Actions
 
-- **`rejected`**: Requires `rejectComment` (mandatory)
-- **`resolved`**: Optional `resolutionNotes` (recommended)
-- **All other transitions**: No comment required
+- **`rejected`**: Requires `rejectComment` (mandatory, min 10 chars).
+- **`dispatched`**: Triggers the **Dispatch Form** (officer picker) — must select an officer before status commits. See [`dispatch_workflow.md`](./dispatch_workflow.md).
+- **`resolved`**: Optional `resolutionNotes`. Officer typically goes through the Proof Upload flow first (see [`officer/feature/officer_proof.md`](../../officer/feature/officer_proof.md)); the dropdown is the secondary path.
+- **All other transitions:** No comment required.
+
+### 3.5 Cancellation
+
+- Tapping outside the bottom sheet OR pressing `Batal` closes it without writing.
 
 ## 4. Database Interactions (Data Layer)
 
@@ -94,6 +101,8 @@ pending ──> in_review ──> dispatched ──> in_progress ──> resolve
   "updatedAt": "Timestamp"
 }
 ```
+
+For transitions into `dispatched`, an additional `/dispatches/{dispatchId}` document is created (see [`dispatch_workflow.md`](./dispatch_workflow.md)).
 
 ### 4.3 Audit Logging
 
@@ -116,54 +125,60 @@ Every status change MUST be logged in `/audit_logs/{logId}`:
 
 ### 4.4 Expected Output
 
-- Report document status field is updated
-- `updatedAt` field is set to server timestamp
-- Audit log entry is created
-- Cloud Function triggers FCM notification to the Citizen (per `notification_center.md`)
+- Report document status field is updated.
+- `updatedAt` field is set to server timestamp.
+- Audit log entry is created.
+- Cloud Function triggers FCM notification to the Citizen (per [`notification_center.md`](./notification_center.md)).
 
 ## 5. Acceptance Criteria
 
-### Scenario 1: Quick Status Update
+### Scenario 1: Quick Status Update (Admin)
 
-- **Given** Admin is on Report Detail page with status = `pending`
-- **When** Admin taps the status badge and selects "Sedang Ditinjau"
-- **Then** Report status changes to `in_review`
-- **And** Audit log is created
-- **And** Citizen receives FCM notification
+- **Given** Admin is on Report Detail page with `status = "pending"`.
+- **When** Admin taps the status badge and selects "Verifikasi".
+- **Then** Report status changes to `in_review`.
+- **And** Audit log is created.
+- **And** Citizen receives FCM notification.
 
 ### Scenario 2: Reject with Comment
 
-- **Given** Admin is on Report Detail page with status = `in_review`
-- **When** Admin taps status badge and selects "Ditolak"
-- **Then** A dialog appears requiring `rejectComment`
-- **And** After submitting, status changes to `rejected` and `rejectComment` is saved
-- **And** Citizen receives FCM notification with the rejection reason
+- **Given** Admin is on Report Detail page with `status = "in_review"`.
+- **When** Admin taps status badge and selects "Ditolak".
+- **Then** A dialog appears requiring `rejectComment`.
+- **And** After submitting, status changes to `rejected` and `rejectComment` is saved.
+- **And** Citizen receives FCM notification with the rejection reason.
 
-### Scenario 3: Mark as Resolved
+### Scenario 3: Transition to Dispatched opens Dispatch Form
 
-- **Given** Admin is on Report Detail page with status = `in_progress`
-- **When** Admin taps status badge and selects "Selesai"
-- **Then** Status changes to `resolved`
-- **And** Optional `resolutionNotes` can be added
-- **And** Status badge color changes to green
+- **Given** Admin is on Report Detail page with `status = "in_review"`.
+- **When** Admin selects "Penugasan" from the dropdown.
+- **Then** the **Dispatch Form** opens (officer picker) before the status is committed.
+- **And** on confirm, `/dispatches/{dispatchId}` is created and `status = "dispatched"`.
 
-### Scenario 4: Invalid Transition Blocked
+### Scenario 4: Officer Updates In-progress → Resolved
 
-- **Given** Admin is on Report Detail page with status = `resolved`
-- **When** Admin taps the status badge
-- **Then** No transition options are shown (terminal state)
-- **And** A message "Status tidak dapat diubah" is displayed
+- **Given** Officer assigned to a report with `status = "in_progress"`.
+- **When** Officer taps the dropdown and selects "Selesai".
+- **Then** `status` updates to `resolved` (and `proofUrl` was already set via Proof Upload).
+- **And** Admin receives FCM (NOTIF-002).
+- **And** the Status Roadmap highlights node 5.
 
-### Scenario 5: Cancel Without Saving
+### Scenario 5: Invalid Transition Blocked
 
-- **Given** Admin opens the status dropdown
-- **When** Admin taps "Cancel" or dismisses the bottom sheet
-- **Then** No changes are made to the report
-- **And** Dropdown closes without error
+- **Given** Report has `status = "resolved"`.
+- **When** Admin taps the status badge.
+- **Then** No transition options are shown (terminal state).
+- **And** A message "Status tidak dapat diubah" is displayed.
+
+### Scenario 6: Cancel Without Saving
+
+- **Given** Admin opens the status dropdown.
+- **When** Admin taps "Batal" or dismisses the bottom sheet.
+- **Then** No changes are made to the report.
+- **And** Dropdown closes without error.
 
 ## 6. Future Enhancements (Out of Scope)
 
-- Bulk status update for multiple reports
-- Status history timeline view
-- Custom status names per category
-- Automated status transitions (e.g., auto-close after 30 days)
+- Bulk status update for multiple reports.
+- Custom status names per category.
+- Automated status transitions (e.g., auto-close after 30 days).

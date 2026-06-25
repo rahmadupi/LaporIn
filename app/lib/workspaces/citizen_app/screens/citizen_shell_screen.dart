@@ -6,6 +6,7 @@ import 'package:laporin/shared/ui/back_press_handler.dart';
 import 'package:laporin/shared/ui/role_scaffold.dart';
 import 'package:laporin/shared/ui/under_construction_page.dart';
 import 'package:laporin/shared_domain_data/auth/providers/auth_providers.dart';
+import 'citizen_profile_screen.dart';
 
 /// Main shell untuk Citizen workspace.
 /// 5 tabs: Beranda, Buat Laporan, Riwayat, Peta, Notifikasi, Profil.
@@ -37,25 +38,13 @@ class _CitizenShellScreenState extends ConsumerState<CitizenShellScreen> {
       title: 'LaporIn - Warga',
       userName: user?.fullName ?? 'Warga',
       userRole: 'citizen',
+      notificationRoute: AppRoutes.citizenNotifications,
       onLogout: _logout,
       tabs: const [
         RoleTab(
-          label: 'Beranda',
+          label: 'Dashboard',
           icon: Icons.home_outlined,
-          body: UnderConstructionPage(role: 'Citizen', pageName: 'Beranda'),
-        ),
-        RoleTab(
-          label: 'Buat Laporan',
-          icon: Icons.add_circle_outline,
-          body: UnderConstructionPage(
-            role: 'Citizen',
-            pageName: 'Buat Laporan',
-          ),
-        ),
-        RoleTab(
-          label: 'Riwayat',
-          icon: Icons.history,
-          body: UnderConstructionPage(role: 'Citizen', pageName: 'Riwayat'),
+          body: UnderConstructionPage(role: 'Citizen', pageName: 'Dashboard'),
         ),
         RoleTab(
           label: 'Peta',
@@ -63,14 +52,19 @@ class _CitizenShellScreenState extends ConsumerState<CitizenShellScreen> {
           body: UnderConstructionPage(role: 'Citizen', pageName: 'Peta'),
         ),
         RoleTab(
-          label: 'Notifikasi',
-          icon: Icons.notifications_outlined,
-          body: UnderConstructionPage(role: 'Citizen', pageName: 'Notifikasi'),
+          label: 'Laporan',
+          icon: Icons.description_outlined,
+          body: UnderConstructionPage(role: 'Citizen', pageName: 'Laporan'),
+        ),
+        RoleTab(
+          label: 'Riwayat',
+          icon: Icons.history,
+          body: UnderConstructionPage(role: 'Citizen', pageName: 'Riwayat'),
         ),
         RoleTab(
           label: 'Profil',
           icon: Icons.person_outline,
-          body: UnderConstructionPage(role: 'Citizen', pageName: 'Profil'),
+          body: CitizenProfileScreen(),
         ),
       ],
     );

@@ -1,134 +1,148 @@
-# User Moderation & Banned Users (Daftar Pengguna Diblokir)
+# User Moderation (Pengguna — Moderation Sub-Page)
 
 ## 1. Overview
 
-User Moderation page provides Admin dengan kemampuan untuk melihat daftar pengguna yang diblokir (banned) dan melakukan unbanned jika diperlukan. Akses ke halaman ini melalui Dashboard shortcut.
+The **Pengguna** sub-page lives inside the **Moderation** shell — paired with the `Laporan` sub-page (see [`report_moderation.md`](./report_moderation.md) Section 3.1). It bundles three queues for managing user accounts:
 
-Additionally, this module includes the **Officer Approval Queue** — a dedicated section listing all officer accounts that are pending admin approval before they can log in.
+| Queue                                | `users.status` | Purpose                                                            |
+| ------------------------------------ | -------------- | ------------------------------------------------------------------ |
+| **Active Users (Daftar Pengguna)**   | `active`       | Search/browse active citizens & officers; **ban** abusers.         |
+| **Banned Users (Pengguna Diblokir)** | `banned`       | List currently banned accounts; **unban** to restore access.       |
+| **Officer Approval (Persetujuan)**   | `pending`      | Officer registrations awaiting approval; **setujui / tolak**.      |
+| **Dormant Users (Akun Dormant)**     | `inActive`     | Inactive accounts; admin can **reactivate** if user is locked out. |
 
-Finally, this module also covers **Dormant Account Management** — admin dapat melihat daftar akun dormant (`status == "inActive"`) dan me-reactivate mereka secara manual jika user tidak bisa melakukan re-activation sendiri.
+Each queue is reached via a secondary tab/pill inside the Pengguna shell.
 
 ## 2. Traceability
 
-- **FRs Covered:** ADM-019, ADM-026
-- **Related:** user_profile_management.md, register_page.md, auth_session.md
+- **FRs Covered:** ADM-011, ADM-012, ADM-013, ADM-019, ADM-025, ADM-026
+- **Related Modules:**
+  - [`report_moderation.md`](./report_moderation.md) — paired sibling sub-page
+  - [`user_profile_management.md`](./user_profile_management.md) — profile detail drill-in
+  - [`register_page.md`](../../utility/register_page.md) — registration flow that produces `pending` officers
+  - [`auth_session.md`](../../utility/auth_session.md) — login / dormant self-reactivation
 
 ## 3. UI/UX Requirements
 
-### 3.1 Banned Users List
+### 3.1 Pengguna Shell
 
-- **Banned Users List:** Tabel/kartu menampilkan user yang `status == "banned"`.
-  - Kolom: Nama, Email, Role (Citizen/Officer), Ban Reason, Banned At, Banned By Admin.
-- **Unban Button:** Aksi untuk mengembalikan akses user (`status: "active"`).
-- **Search/Filter:** Filter berdasarkan role atau rentang tanggal.
-- **Accessed via:** Dashboard → "Banned Users" shortcut card.
+```
++----------------------------------------------------------+
+|  Moderasi > Pengguna                  [🔍] [⚙]           |
++----------------------------------------------------------+
+|  ┌────────┐ ┌────────┐ ┌────────────┐ ┌────────┐         |
+|  │ Aktif  │ │ Diblokir│ │ Persetujuan│ │ Dormant│         |
+|  └────────┘ └────────┘ └────────────┘ └────────┘         |
++----------------------------------------------------------+
+```
 
-### 3.2 Officer Approval Queue
+- Default tab: **Aktif** (since it's the most-used).
+- Search bar above the tabs filters across the active tab.
 
-- **Pending Officers List:** Daftar officer dengan `status == "pending"`.
-  - Kolom: Nama, Email, Nomor HP, District, Tanggal Pendaftaran.
-  - Aksi: **"Setujui"** (approve) atau **"Tolak"** (reject/delete).
-- **Approve Flow:**
-  1. Admin klik "Setujui"
-  2. Firestore update: `status: "active"`, `approvedBy: adminUid`, `approvedAt: Timestamp`
-  3. Email dikirim ke officer: "Akun Anda telah disetujui. Silakan login."
-- **Reject Flow:**
-  1. Admin klik "Tolak"
-  2. Konfirmasi dengan alasan (text input)
-  3. Firestore: `status: "banned"` (dengan `banReason` berisi alasan penolakan) atau dokumen dihapus
-  4. Firebase Auth user dinonaktifkan via Cloud Function
-  5. Email dikirim ke officer: "Pendaftaran petugas ditolak. [Alasan]. Hubungi admin untuk informasi lebih lanjut."
+### 3.2 Aktif (Active Users)
 
-### 3.3 Dormant Users List (Akun Dormant)
+- **Source:** `users` where `status == "active"`.
+- **Card per user:** avatar, nama, email, role (Citizen/Officer), tanggal daftar, jumlah laporan / tugas aktif.
+- **Per-row action:** `Ban` button (red) → opens **Ban Dialog** (Section 3.2.1).
+- **Search/filter:** by name, email, role.
+- Tapping the card body (outside the Ban button) opens [`user_profile_management.md`](./user_profile_management.md) detail view (read-only).
 
-- **Dormant Users List:** Tabel/kartu menampilkan user yang `status == "inActive"`.
-  - Kolom: Nama, Email, Role, Last Sign-In, Inactive Since.
-- **Reactivate Button:** Aksi untuk mengembalikan akun dormant ke `status: "active"`.
-  - Use case: user tidak bisa melakukan re-activation sendiri (mis. kehilangan akses ke email) dan menghubungi admin.
-- **Search/Filter:** Filter berdasarkan role atau rentang tanggal inactive.
-- **Catatan:** Akun dormant BUKAN banned — tidak ada `banReason`/`bannedAt`. User dapat melakukan self re-activation lewat tombol "Aktifkan Kembali" di halaman login.
+#### 3.2.1 Ban Dialog
+
+Triggered by `Ban`.
+
+- **Ban reason** — multi-line text input, **required** (min 10 chars).
+- Buttons: `Batal` (dismiss) and `Blokir Pengguna` (primary, red).
+- On confirm: `status → "banned"`, `banReason` saved, `bannedAt = serverTimestamp()`, `bannedBy = adminUid`. Cloud Function disables Firebase Auth (per ADM-019).
+
+### 3.3 Diblokir (Banned Users)
+
+- **Source:** `users` where `status == "banned"`.
+- **Columns:** Nama, Email, Role, Ban Reason, Banned At, Banned By Admin.
+- **Per-row action:** `Unban` button (primary).
+- **Search/filter:** by role, date range of ban.
+
+### 3.4 Persetujuan (Officer Approval Queue)
+
+- **Source:** `users` where `role == "officer"` AND `status == "pending"`.
+- **Columns:** Nama, Email, Nomor HP, District, Tanggal Pendaftaran.
+- **Per-row actions:**
+  - `Setujui` → `status: "active"`, `approvedBy`, `approvedAt`. Email sent.
+  - `Tolak` → Reject Dialog (similar to Ban Dialog, requires reason). Sets `status: "banned"` with `banReason` (or deletes the doc).
+
+### 3.5 Dormant (Akun Dormant)
+
+- **Source:** `users` where `status == "inActive"`.
+- **Columns:** Nama, Email, Role, Last Sign-In, Inactive Since.
+- **Per-row action:** `Reactivate` button → sets `status: "active"`.
+- **Catatan:** Dormant accounts are NOT banned — users can self-activate via the login screen's "Aktifkan Kembali" button. Admin reactivation is only when the user is locked out (e.g., lost email access).
 
 ## 4. Database Interactions (Data Layer)
 
 - **Target Collection:** `/users`
-- **Query (Banned List):** `where("status", "==", "banned")`
-- **Query (Pending Officers):** `where("role", "==", "officer")` AND `where("status", "==", "pending")`
-- **Query (Dormant List):** `where("status", "==", "inActive")`
-- **Input (Unban):** Update `/users/{uid}` -> `{ "status": "active" }` (dan hapus `banReason`/`bannedAt`/`bannedBy`)
-- **Input (Approve Officer):** Update `/users/{uid}` -> `{ "status": "active", "approvedBy": "adminId", "approvedAt": Timestamp }`
-- **Input (Reject Officer):** Update `/users/{uid}` -> `{ "status": "banned", "banReason": reason, "bannedAt": serverTimestamp, "bannedBy": adminId }` OR delete document
-- **Input (Admin Reactivate Dormant):** Update `/users/{uid}` -> `{ "status": "active" }`
-- **Input (User Self Reactivate Dormant):** Update `/users/{uid}` -> `{ "status": "active" }` (dipanggil dari tombol "Aktifkan Kembali" di login screen, setelah user berhasil melewati Firebase Auth credential check)
-- **Expected Output (Unban):** User dapat login kembali. Cloud Function merevoke ban status.
-- **Expected Output (Approve):** Officer dapat login. Email notifikasi dikirim ke alamat email officer.
-- **Expected Output (Reject):** Officer account deactivated. Email notifikasi penolakan dikirim via Cloud Function (Email Engine/APIService).
-- **Expected Output (Reactivate Dormant):** User dapat login kembali dengan kredensial yang sama. Data dan history laporan user tetap tersimpan.
+- **Query (Aktif):** `where("status", "==", "active")`
+- **Query (Diblokir):** `where("status", "==", "banned")`
+- **Query (Persetujuan):** `where("role", "==", "officer")` AND `where("status", "==", "pending")`
+- **Query (Dormant):** `where("status", "==", "inActive")`
+
+### 4.1 Input Schemas
+
+| Action                                      | Update                                                                                           |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Ban (Aktif → Diblokir)**                  | `{ "status": "banned", "banReason": reason, "bannedAt": serverTimestamp, "bannedBy": adminUid }` |
+| **Unban (Diblokir → Aktif)**                | `{ "status": "active" }` (clear `banReason` / `bannedAt` / `bannedBy`)                           |
+| **Approve officer (Persetujuan → Aktif)**   | `{ "status": "active", "approvedBy": adminId, "approvedAt": Timestamp }`                         |
+| **Reject officer (Persetujuan → Diblokir)** | `{ "status": "banned", "banReason": reason, ... }` OR delete document                            |
+| **Reactivate dormant (Dormant → Aktif)**    | `{ "status": "active" }`                                                                         |
+| **User self-reactivate (login screen)**     | `{ "status": "active" }`                                                                         |
+
+### 4.2 Expected Output
+
+- **Ban:** Firebase Auth disabled via Cloud Function; user cannot sign in.
+- **Unban:** User can sign in again. Cloud Function re-enables Auth.
+- **Approve:** Officer can log in. Email notification sent.
+- **Reject:** Officer account deactivated. Email rejection notice sent with reason.
+- **Reactivate:** User can sign in with same credentials. History preserved.
 
 ## 5. Acceptance Criteria
 
-### Scenario 1: Viewing Banned Users
+### Scenario 1: Ban an Active User
 
-- **Given** Admin membuka halaman Banned Users.
-- **When** halaman dimuat.
-- **Then** semua user dengan `status: "banned"` ditampilkan.
+- **Given** Admin is on the `Aktif` tab with at least one active user.
+- **When** Admin taps `Ban`, fills `banReason`, and confirms.
+- **Then** `status` updates to `banned`, `banReason` is saved.
+- **And** the user disappears from the `Aktif` list and appears in `Diblokir`.
+- **And** Firebase Auth is disabled (user cannot log in).
 
-### Scenario 2: Unban User
+### Scenario 2: Unban a Banned User
 
-- **Given** Admin mengklik "Unban" pada user tertentu.
-- **When** Admin mengkonfirmasi.
-- **Then** `status` diubah ke `"active"`.
-- **And** User dapat login kembali.
+- **Given** Admin is on the `Diblokir` tab.
+- **When** Admin taps `Unban` on a user and confirms.
+- **Then** `status` updates to `active` and the user moves to `Aktif`.
 
 ### Scenario 3: Approve Officer
 
-- **Given** Admin membuka halaman Persetujuan Petugas.
-- **When** Admin mengklik "Setujui" pada seorang officer.
-- **Then** `status` diubah ke `"active"` dengan `approvedBy` dan `approvedAt`.
-- **And** Email notifikasi dikirim ke officer.
-- **And** Officer dapat login ke workspace mereka.
+- **Given** Admin is on `Persetujuan` tab.
+- **When** Admin taps `Setujui` on a pending officer.
+- **Then** `status` updates to `active` with `approvedBy` and `approvedAt`.
+- **And** Officer receives email + can log in.
 
-### Scenario 4: Reject Officer
+### Scenario 4: Reject Officer with Reason
 
-- **Given** Admin mengklik "Tolak" pada seorang officer.
-- **When** Admin mengisi alasan penolakan dan mengkonfirmasi.
-- **Then** `status` diubah ke `"banned"` (dengan `banReason`) atau dokumen dihapus.
-- **And** Firebase Auth dinonaktifkan via Cloud Function.
-- **And** Email notifikasi penolakan (beserta alasan) dikirim ke officer.
+- **Given** Admin taps `Tolak` on a pending officer.
+- **When** Admin provides a reason and confirms.
+- **Then** `status` updates to `banned` with `banReason`.
+- **And** Firebase Auth is disabled and rejection email sent.
 
-### Scenario 5: User Self-Reactivation (Dormant)
+### Scenario 5: Admin Reactivate Dormant
 
-- **Given** user dengan `status: "inActive"` mencoba login.
-- **When** user memasukkan kredensial yang valid dan klik "Aktifkan Kembali" di dormant card.
-- **Then** `status` diubah ke `"active"`.
-- **And** user otomatis sign-in dan masuk ke workspace sesuai role.
+- **Given** Admin is on `Dormant` tab.
+- **When** Admin taps `Reactivate` on an inactive user.
+- **Then** `status` updates to `active`.
+- **And** user can log in again.
 
-### Scenario 6: Admin Reactivate Dormant
+### Scenario 6: Tab Switch Persists State
 
-- **Given** Admin membuka halaman Dormant Users.
-- **When** Admin mengklik "Reactivate" pada seorang user.
-- **Then** `status` diubah ke `"active"`.
-- **And** user dapat login kembali dengan kredensial yang sama.
-
-## 5. Acceptance Criteria
-
-- **Scenario 1: Viewing Banned Users**
-  - **Given** Admin membuka halaman Banned Users.
-  - **When** halaman dimuat.
-  - **Then** semua user dengan `status: "banned"` ditampilkan.
-- **Scenario 2: Unban User**
-  - **Given** Admin mengklik "Unban" pada user tertentu.
-  - **When** Admin mengkonfirmasi.
-  - **Then** `status` diubah ke `"active"`.
-  - **And** User dapat login kembali.
-- **Scenario 3: Approve Officer**
-  - **Given** Admin membuka halaman Persetujuan Petugas.
-  - **When** Admin mengklik "Setujui" pada seorang officer.
-  - **Then** `status` diubah ke `"active"` dengan `approvedBy` dan `approvedAt`.
-  - **And** Email notifikasi dikirim ke officer.
-  - **And** Officer dapat login ke workspace mereka.
-- **Scenario 4: Reject Officer**
-  - **Given** Admin mengklik "Tolak" pada seorang officer.
-  - **When** Admin mengisi alasan penolakan dan mengkonfirmasi.
-  - **Then** `status` diubah ke `"banned"` (dengan `banReason`) atau dokumen dihapus.
-  - **And** Firebase Auth dinonaktifkan via Cloud Function.
-  - **And** Email notifikasi penolakan (beserta alasan) dikirim ke officer.
+- **Given** Admin switches from `Aktif` to `Diblokir` and back.
+- **When** they return to `Aktif`.
+- **Then** the search query and scroll position are preserved.

@@ -11,4 +11,9 @@ class AppRoutes {
   static const String citizenHome = '/citizen';
   static const String officerHome = '/officer';
   static const String adminHome = '/admin';
+
+  // Halaman notifikasi per-role (diakses via bell icon di AppBar).
+  static const String citizenNotifications = '/citizen/notifications';
+  static const String officerNotifications = '/officer/notifications';
+  static const String adminNotifications = '/admin/notifications';
 }

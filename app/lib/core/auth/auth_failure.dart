@@ -16,6 +16,7 @@ enum AuthErrorCode {
   pendingOfficer,
   inactive,
   banned,
+  requiresRecentLogin,
 }
 
 /// Exception domain untuk kegagalan autentikasi.

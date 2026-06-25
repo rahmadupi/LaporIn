@@ -7,8 +7,12 @@ import 'package:laporin/shared/ui/role_scaffold.dart';
 import 'package:laporin/shared/ui/under_construction_page.dart';
 import 'package:laporin/shared_domain_data/auth/providers/auth_providers.dart';
 
+import 'admin_dashboard_screen.dart';
+import 'admin_moderation_shell_screen.dart';
+import 'admin_profile_screen.dart';
+
 /// Main shell untuk Admin workspace.
-/// 4 tabs: Dashboard, Peta, Laporan, Petugas, Profil.
+/// 5 tabs: Dashboard, Peta, Laporan, Petugas, Profil.
 class AdminShellScreen extends ConsumerStatefulWidget {
   const AdminShellScreen({super.key});
 
@@ -38,31 +42,31 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       userName: user?.fullName ?? 'Admin',
       userRole: 'admin',
       onLogout: _logout,
-      tabs: const [
+      tabs: [
         RoleTab(
           label: 'Dashboard',
           icon: Icons.dashboard_outlined,
-          body: UnderConstructionPage(role: 'Admin', pageName: 'Dashboard'),
+          body: const AdminDashboardScreen(),
         ),
         RoleTab(
           label: 'Peta',
           icon: Icons.map_outlined,
-          body: UnderConstructionPage(role: 'Admin', pageName: 'Peta'),
+          body: const UnderConstructionPage(role: 'Admin', pageName: 'Peta'),
         ),
         RoleTab(
           label: 'Laporan',
           icon: Icons.description_outlined,
-          body: UnderConstructionPage(role: 'Admin', pageName: 'Laporan'),
+          body: const AdminModerationShellScreen(),
         ),
         RoleTab(
           label: 'Petugas',
           icon: Icons.engineering_outlined,
-          body: UnderConstructionPage(role: 'Admin', pageName: 'Petugas'),
+          body: const UnderConstructionPage(role: 'Admin', pageName: 'Petugas'),
         ),
         RoleTab(
           label: 'Profil',
           icon: Icons.person_outline,
-          body: UnderConstructionPage(role: 'Admin', pageName: 'Profil'),
+          body: const AdminProfileScreen(),
         ),
       ],
     );

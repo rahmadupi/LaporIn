@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 enum AlertSeverity {
   critical('KRITIS', Color(0xFFDC2626), Color(0xFFFEE2E2), Icons.warning_amber),
   high('TINGGI', Color(0xFFEA580C), Color(0xFFFFEDD5), Icons.priority_high),
-  medium('SEDANG', Color(0xFFCA8A04), Color(0xFFFEF3C7), Icons.schedule);
+  medium('SEDANG', Color(0xFFCA8A04), Color(0xFFFEF3C7), Icons.schedule),
+  low('RENDAH', Color(0xFF16A34A), Color(0xFFDCFCE7), Icons.info_outline);
 
   const AlertSeverity(this.label, this.accent, this.soft, this.icon);
 
@@ -29,6 +30,19 @@ class PriorityAlertCard extends StatelessWidget {
   final int count;
   final String description;
   final VoidCallback? onTap;
+
+  static String _buildTitle(AlertSeverity severity, int count) {
+    switch (severity) {
+      case AlertSeverity.critical:
+        return '$count Laporan Kritis';
+      case AlertSeverity.high:
+        return '$count Laporan Prioritas Tinggi';
+      case AlertSeverity.medium:
+        return '$count Laporan Prioritas Sedang';
+      case AlertSeverity.low:
+        return '$count Laporan Prioritas Rendah';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +83,7 @@ class PriorityAlertCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$count Laporan Prioritas ${severity.label == 'KRITIS' ? 'Kritis' : severity.label == 'TINGGI' ? 'Tinggi' : 'Sedang'}',
+                      _buildTitle(severity, count),
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -89,8 +103,10 @@ class PriorityAlertCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: severity.accent,
                   borderRadius: BorderRadius.circular(6),
