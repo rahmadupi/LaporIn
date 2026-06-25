@@ -18,7 +18,8 @@ class OfficerTaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = entity.imageUrl ??
+    final imageUrl =
+        entity.imageUrl ??
         (entity.imageUrls.isNotEmpty ? entity.imageUrls.first : null);
 
     return Card(
@@ -55,18 +56,25 @@ class OfficerTaskCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.place_outlined,
-                            size: 12, color: AppColors.textSecondary),
+                        const Icon(
+                          Icons.place_outlined,
+                          size: 12,
+                          color: AppColors.textSecondary,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             entity.addressDetail ??
-                                _formatLatLng(entity.latitude, entity.longitude),
+                                _formatLatLng(
+                                  entity.latitude,
+                                  entity.longitude,
+                                ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary),
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ),
                       ],
@@ -110,8 +118,7 @@ class _Thumbnail extends StatelessWidget {
           color: AppColors.scaffoldBackground,
           borderRadius: BorderRadius.circular(8),
         ),
-        child:
-            const Icon(Icons.image_outlined, color: AppColors.textSecondary),
+        child: const Icon(Icons.image_outlined, color: AppColors.textSecondary),
       );
     }
     return ClipRRect(
@@ -125,8 +132,11 @@ class _Thumbnail extends StatelessWidget {
           width: 64,
           height: 64,
           color: AppColors.scaffoldBackground,
-          child: const Icon(Icons.broken_image,
-              size: 18, color: AppColors.textSecondary),
+          child: const Icon(
+            Icons.broken_image,
+            size: 18,
+            color: AppColors.textSecondary,
+          ),
         ),
       ),
     );

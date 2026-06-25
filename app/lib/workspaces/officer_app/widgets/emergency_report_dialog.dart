@@ -32,8 +32,7 @@ class EmergencyReportDialog extends ConsumerStatefulWidget {
       _EmergencyReportDialogState();
 }
 
-class _EmergencyReportDialogState
-    extends ConsumerState<EmergencyReportDialog> {
+class _EmergencyReportDialogState extends ConsumerState<EmergencyReportDialog> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -123,7 +122,9 @@ class _EmergencyReportDialogState
 
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(reportRepositoryProvider).createEmergencyReport(
+      await ref
+          .read(reportRepositoryProvider)
+          .createEmergencyReport(
             reporterId: user.uid,
             title: _titleController.text.trim(),
             description: _descriptionController.text.trim(),
@@ -160,7 +161,10 @@ class _EmergencyReportDialogState
               children: [
                 const Text(
                   'Buat laporan cepat dari lapangan. Lokasi akan terisi otomatis dari GPS.',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -208,7 +212,9 @@ class _EmergencyReportDialogState
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Text('Kirim'),
         ),
@@ -236,26 +242,27 @@ class _GpsIndicator extends StatelessWidget {
       return const Row(
         children: [
           SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2)),
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
           SizedBox(width: 8),
-          Text('Mendeteksi koordinat...',
-              style: TextStyle(fontSize: 12, color: AppColors.primary)),
+          Text(
+            'Mendeteksi koordinat...',
+            style: TextStyle(fontSize: 12, color: AppColors.primary),
+          ),
         ],
       );
     }
     if (error != null) {
       return Row(
         children: [
-          const Icon(Icons.error_outline,
-              color: AppColors.error, size: 18),
+          const Icon(Icons.error_outline, color: AppColors.error, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               error!,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.error),
+              style: const TextStyle(fontSize: 12, color: AppColors.error),
             ),
           ),
           TextButton(

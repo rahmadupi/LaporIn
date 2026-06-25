@@ -25,11 +25,23 @@ class UserRepository {
         );
   }
 
-  /// Stream pending officers (role=officer, status=pending).
+  /// Stream officer yang sedang menunggu aksi admin.
+  ///
+  /// Mencakup dua stage lifecycle:
+  /// - `status == "pending_verification"` — officer sudah register tapi
+  ///   **belum klik link verifikasi email**. Admin tidak bisa approve
+  ///   sampai email terverifikasi (lihat `auth_repository.signIn` yang
+  ///   memvalidasi `emailVerified`).
+  /// - `status == "pending"` — email sudah diverifikasi, officer sudah
+  ///   sign-in pertama, dan menunggu persetujuan admin.
+  ///
+  /// Tanpa memasukkan `pending_verification` ke queue ini, admin tidak
+  /// akan pernah melihat officer yang register tapi tidak pernah sign-in
+  /// setelah verifikasi email (bug yang sering luput dari dev).
   Stream<List<UserEntity>> streamPendingOfficers() {
     return _users
         .where('role', isEqualTo: 'officer')
-        .where('status', isEqualTo: 'pending')
+        .where('status', whereIn: const ['pending', 'pending_verification'])
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map(

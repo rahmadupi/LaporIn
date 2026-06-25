@@ -7,7 +7,9 @@ import 'package:laporin/shared/ui/role_scaffold.dart';
 import 'package:laporin/shared/ui/under_construction_page.dart';
 import 'package:laporin/shared_domain_data/auth/providers/auth_providers.dart';
 import 'officer_home_screen.dart';
+import 'officer_laporan_screen.dart';
 import 'officer_profile_screen.dart';
+import 'officer_riwayat_screen.dart';
 
 /// Main shell untuk Officer workspace.
 /// 5 tabs: TAB 1 - TAB 5.
@@ -53,15 +55,17 @@ class _OfficerShellScreenState extends ConsumerState<OfficerShellScreen> {
           icon: Icons.map_outlined,
           body: UnderConstructionPage(role: 'Officer', pageName: 'Peta'),
         ),
+        // M5: Laporan — feed publik untuk self-request.
         const RoleTab(
           label: 'Laporan',
           icon: Icons.description_outlined,
-          body: UnderConstructionPage(role: 'Officer', pageName: 'Laporan'),
+          body: OfficerLaporanScreen(),
         ),
+        // M4: Riwayat — tugas yang sudah selesai.
         const RoleTab(
           label: 'Riwayat',
           icon: Icons.history,
-          body: UnderConstructionPage(role: 'Officer', pageName: 'Riwayat'),
+          body: OfficerRiwayatScreen(),
         ),
         RoleTab(
           label: 'Profil',

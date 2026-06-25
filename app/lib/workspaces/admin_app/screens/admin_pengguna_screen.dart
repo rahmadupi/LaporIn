@@ -50,8 +50,9 @@ class _AdminPenggunaScreenState extends ConsumerState<AdminPenggunaScreen>
       length: PenggunaTab.values.length,
       vsync: this,
     );
-    _searchController =
-        TextEditingController(text: ref.read(penggunaSearchQueryProvider));
+    _searchController = TextEditingController(
+      text: ref.read(penggunaSearchQueryProvider),
+    );
   }
 
   @override
@@ -73,8 +74,9 @@ class _AdminPenggunaScreenState extends ConsumerState<AdminPenggunaScreen>
           child: TextField(
             controller: _searchController,
             onChanged: (v) {
-              ref.read(penggunaSearchQueryProvider.notifier).state =
-                  v.trim().toLowerCase();
+              ref.read(penggunaSearchQueryProvider.notifier).state = v
+                  .trim()
+                  .toLowerCase();
             },
             decoration: InputDecoration(
               hintText: 'Cari nama atau email...',
@@ -169,11 +171,35 @@ class _UserListPersetujuan extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final usersAsync = ref.watch(pendingOfficersStreamProvider);
     final query = ref.watch(penggunaSearchQueryProvider);
+
+    // Bantu admin membedakan stage di list (kecil tapi penting —
+    // lihat `streamPendingOfficers` untuk konteks).
     return _UserListScaffold(
       usersAsync: usersAsync,
       query: query,
       action: (user) => _ApprovalActions(user: user),
       emptyMessage: 'Tidak ada officer menunggu persetujuan.',
+      extraInfo: (user) {
+        if (user.status == 'pending_verification') {
+          return _StageBadge(
+            label: 'Belum verifikasi email',
+            color: Colors.orange.shade700,
+            icon: Icons.mark_email_unread_outlined,
+            tooltip:
+                'Officer ini belum klik link verifikasi di emailnya. '
+                'Tidak bisa disetujui sampai verifikasi email selesai.',
+          );
+        }
+        if (user.status == 'pending') {
+          return _StageBadge(
+            label: 'Siap disetujui',
+            color: Colors.blue.shade700,
+            icon: Icons.check_circle_outline,
+            tooltip: 'Email terverifikasi, menunggu persetujuan admin.',
+          );
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 }
@@ -232,10 +258,8 @@ class _UserListScaffold extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           itemCount: filtered.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (context, i) => _UserCard(
-            user: filtered[i],
-            actionWidget: action(filtered[i]),
-          ),
+          itemBuilder: (context, i) =>
+              _UserCard(user: filtered[i], actionWidget: action(filtered[i])),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -294,19 +318,13 @@ class _UserCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '${user.email} • $roleLabel',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                 ),
                 if (user.banReason != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     'Alasan: ${user.banReason}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.red.shade700,
-                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.red.shade700),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -364,21 +382,23 @@ class _BanButton extends ConsumerWidget {
     final admin = ref.read(currentUserProvider).valueOrNull;
     if (admin == null) return;
     try {
-      await ref.read(userRepositoryProvider).ban(
+      await ref
+          .read(userRepositoryProvider)
+          .ban(
             uid: user.uid,
             reason: reasonController.text.trim(),
             bannedBy: admin.uid,
           );
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pengguna diblokir.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Pengguna diblokir.')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
       }
     }
   }
@@ -409,9 +429,7 @@ class _UnbanButton extends ConsumerWidget {
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('Buka Blokir'),
-            content: Text(
-              'Buka blokir untuk ${user.fullName}?',
-            ),
+            content: Text('Buka blokir untuk ${user.fullName}?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -428,15 +446,15 @@ class _UnbanButton extends ConsumerWidget {
         try {
           await ref.read(userRepositoryProvider).unban(user.uid);
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Pengguna di-unban.')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Pengguna di-unban.')));
           }
         } catch (e) {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Gagal: $e')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
           }
         }
       },
@@ -464,10 +482,9 @@ class _ApprovalActions extends ConsumerWidget {
             final admin = ref.read(currentUserProvider).valueOrNull;
             if (admin == null) return;
             try {
-              await ref.read(userRepositoryProvider).approveOfficer(
-                    uid: user.uid,
-                    approvedBy: admin.uid,
-                  );
+              await ref
+                  .read(userRepositoryProvider)
+                  .approveOfficer(uid: user.uid, approvedBy: admin.uid);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Officer disetujui.')),
@@ -475,9 +492,9 @@ class _ApprovalActions extends ConsumerWidget {
               }
             } catch (e) {
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Gagal: $e')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
               }
             }
           },
@@ -509,7 +526,9 @@ class _ApprovalActions extends ConsumerWidget {
                       if (reasonController.text.trim().length < 10) return;
                       Navigator.pop(context, true);
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
                     child: const Text('Tolak'),
                   ),
                 ],
@@ -519,7 +538,9 @@ class _ApprovalActions extends ConsumerWidget {
             final admin = ref.read(currentUserProvider).valueOrNull;
             if (admin == null) return;
             try {
-              await ref.read(userRepositoryProvider).rejectOfficer(
+              await ref
+                  .read(userRepositoryProvider)
+                  .rejectOfficer(
                     uid: user.uid,
                     reason: reasonController.text.trim(),
                     bannedBy: admin.uid,
@@ -531,9 +552,9 @@ class _ApprovalActions extends ConsumerWidget {
               }
             } catch (e) {
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Gagal: $e')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
               }
             }
           },
@@ -562,9 +583,9 @@ class _ReactivateButton extends ConsumerWidget {
           }
         } catch (e) {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Gagal: $e')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
           }
         }
       },

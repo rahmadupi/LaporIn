@@ -5,4 +5,6 @@ export '../data/repositories/dispatch_repository.dart'
         dispatchRepositoryProvider,
         pendingOfficerSelfRequestsStreamProvider,
         activeDispatchesByOfficerProvider,
+        mySelfRequestsStreamProvider,
+        mySelfRequestedReportIdsProvider,
         OfficerSelfRequestWithReport;

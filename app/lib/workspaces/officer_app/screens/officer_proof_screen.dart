@@ -31,8 +31,7 @@ class OfficerProofScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> taskData;
 
   @override
-  ConsumerState<OfficerProofScreen> createState() =>
-      _OfficerProofScreenState();
+  ConsumerState<OfficerProofScreen> createState() => _OfficerProofScreenState();
 }
 
 class _OfficerProofScreenState extends ConsumerState<OfficerProofScreen> {
@@ -178,7 +177,9 @@ class _OfficerProofScreenState extends ConsumerState<OfficerProofScreen> {
       // 1. Upload kedua foto ke ImgBB secara paralel
       final urls = await _service.uploadPair(_beforePhoto!, _afterPhoto!);
       if (urls.beforeUrl == null || urls.afterUrl == null) {
-        throw Exception('Gagal mengunggah foto ke server. Periksa koneksi Anda.');
+        throw Exception(
+          'Gagal mengunggah foto ke server. Periksa koneksi Anda.',
+        );
       }
 
       // 2. Tulis ke Firestore
@@ -217,7 +218,8 @@ class _OfficerProofScreenState extends ConsumerState<OfficerProofScreen> {
   @override
   Widget build(BuildContext context) {
     final title = (widget.taskData['title'] as String?) ?? 'Tanpa Judul';
-    final address = (widget.taskData['addressDetail'] as String?) ??
+    final address =
+        (widget.taskData['addressDetail'] as String?) ??
         'Lokasi tidak diketahui';
 
     return Scaffold(
@@ -231,9 +233,7 @@ class _OfficerProofScreenState extends ConsumerState<OfficerProofScreen> {
             padding: const EdgeInsets.only(right: 16.0),
             child: Center(
               child: Text(
-                _isOffline
-                    ? '🟠 Offline — akan disinkronkan'
-                    : '🟢 Online',
+                _isOffline ? '🟠 Offline — akan disinkronkan' : '🟢 Online',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -277,8 +277,7 @@ class _OfficerProofScreenState extends ConsumerState<OfficerProofScreen> {
         children: [
           Text(
             '$title • $address',
-            style: const TextStyle(
-                fontSize: 12, color: AppColors.textPrimary),
+            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
           Text(
@@ -349,8 +348,11 @@ class _OfficerProofScreenState extends ConsumerState<OfficerProofScreen> {
                 : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: const [
-                      Icon(Icons.camera_alt,
-                          size: 40, color: AppColors.textSecondary),
+                      Icon(
+                        Icons.camera_alt,
+                        size: 40,
+                        color: AppColors.textSecondary,
+                      ),
                       SizedBox(height: 8),
                       Text(
                         'Ketuk untuk\nambil foto',
@@ -373,9 +375,10 @@ class _OfficerProofScreenState extends ConsumerState<OfficerProofScreen> {
       return const Row(
         children: [
           SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2)),
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
           SizedBox(width: 8),
           Text(
             'Mendeteksi koordinat lokasi...',
@@ -445,10 +448,13 @@ class _OfficerProofScreenState extends ConsumerState<OfficerProofScreen> {
             child: Row(
               children: [
                 SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.error)),
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.error,
+                  ),
+                ),
                 SizedBox(width: 8),
                 Text(
                   'Sedang mendengarkan...',

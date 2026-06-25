@@ -48,6 +48,43 @@ class DispatchRepository {
         .asyncMap(_joinWithParentReport);
   }
 
+  /// Stream ajuan diri **milik satu officer** (filter `officerId`).
+  ///
+  /// Dipakai oleh Officer Laporan (M5/OFC-003) untuk menentukan
+  /// laporan mana yang sudah pernah di-request oleh officer tersebut
+  /// (badge "Sudah Diajukan").
+  ///
+  /// Memerlukan composite index:
+  ///   - Collection: `officer`
+  ///   - Fields: `officerId` ASC, `status` ASC, `appliedAt` DESC
+  Stream<List<OfficerSelfRequestWithReport>> streamMySelfRequests(
+    String officerId, {
+    List<String> statuses = const ['applied', 'accepted', 'rejected'],
+  }) {
+    return _db
+        .collectionGroup('officer')
+        .where('officerId', isEqualTo: officerId)
+        .where('status', whereIn: statuses)
+        .orderBy('appliedAt', descending: true)
+        .snapshots()
+        .asyncMap(_joinWithParentReport);
+  }
+
+  /// Buat ajuan diri officer (OFC-003). Menulis dokumen di
+  /// `/reports/{reportId}/officer/{officerId}` dengan status `applied`.
+  Future<void> submitSelfRequest({
+    required String reportId,
+    required String officerId,
+    required String officerName,
+  }) async {
+    await _reports.doc(reportId).collection('officer').doc(officerId).set({
+      'officerId': officerId,
+      'officerName': officerName,
+      'status': 'applied',
+      'appliedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<List<OfficerSelfRequestWithReport>> _joinWithParentReport(
     QuerySnapshot<Map<String, dynamic>> snap,
   ) async {
@@ -228,3 +265,28 @@ final activeDispatchesByOfficerProvider =
           .watch(dispatchRepositoryProvider)
           .streamActiveByOfficer(officerId);
     });
+
+/// Stream provider: ajuan diri milik satu officer (semua status).
+/// Dipakai oleh Officer Laporan (M5) untuk deteksi "Sudah Diajukan".
+final mySelfRequestsStreamProvider =
+    StreamProvider.family<List<OfficerSelfRequestWithReport>, String>((
+      ref,
+      officerId,
+    ) {
+      return ref
+          .watch(dispatchRepositoryProvider)
+          .streamMySelfRequests(officerId);
+    });
+
+/// Derived: himpunan `reportId` yang sudah pernah di-request oleh
+/// officer (semua status). Memudahkan lookup O(1) di list Laporan.
+final mySelfRequestedReportIdsProvider = Provider.family<Set<String>, String>((
+  ref,
+  officerId,
+) {
+  final async = ref.watch(mySelfRequestsStreamProvider(officerId));
+  return async.maybeWhen(
+    data: (list) => list.map((e) => e.request.reportId).toSet(),
+    orElse: () => <String>{},
+  );
+});

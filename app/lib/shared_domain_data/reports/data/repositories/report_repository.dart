@@ -205,20 +205,23 @@ final allReportsStreamProvider = StreamProvider<List<ReportEntity>>((ref) {
 /// dengan default status `dispatched` + `in_progress` (OFC-002).
 final myAssignedTasksProvider =
     StreamProvider.family<List<ReportEntity>, String>((ref, officerId) {
-  return ref
-      .watch(reportRepositoryProvider)
-      .streamAssignedToOfficer(officerId);
-});
+      return ref
+          .watch(reportRepositoryProvider)
+          .streamAssignedToOfficer(officerId);
+    });
 
-/// Stream provider: riwayat tugas officer (resolved + rejected).
-/// Dipakai oleh Officer History (OFC-009) di M4.
+/// Stream provider: riwayat tugas officer yang sudah **selesai**
+/// (`status: resolved`). Dipakai oleh Officer Riwayat (M4). Rejected
+/// tidak dimasukkan — bisa ditambah di tab/filter terpisah nanti.
 final myOfficerHistoryProvider =
     StreamProvider.family<List<ReportEntity>, String>((ref, officerId) {
-  return ref.watch(reportRepositoryProvider).streamAssignedToOfficer(
-        officerId,
-        statuses: const [ReportStatus.resolved, ReportStatus.rejected],
-      );
-});
+      return ref
+          .watch(reportRepositoryProvider)
+          .streamAssignedToOfficer(
+            officerId,
+            statuses: const [ReportStatus.resolved],
+          );
+    });
 
 /// Future provider: priority alert counts.
 class PriorityCounts {

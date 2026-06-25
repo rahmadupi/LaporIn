@@ -33,9 +33,9 @@ class ProofUploadService {
     http.Client? httpClient,
     String imgbbApiKey = '072ae2e1c37bce3c098abf56b08d9c89',
     String offlineBoxName = 'offline_proofs',
-  })  : _http = httpClient ?? http.Client(),
-        _imgbbApiKey = imgbbApiKey,
-        _offlineBox = Hive.box(offlineBoxName);
+  }) : _http = httpClient ?? http.Client(),
+       _imgbbApiKey = imgbbApiKey,
+       _offlineBox = Hive.box(offlineBoxName);
 
   final http.Client _http;
   final String _imgbbApiKey;
@@ -54,10 +54,7 @@ class ProofUploadService {
 
       final response = await _http.post(
         Uri.parse('https://api.imgbb.com/1/upload'),
-        body: {
-          'key': _imgbbApiKey,
-          'image': base64Image,
-        },
+        body: {'key': _imgbbApiKey, 'image': base64Image},
       );
 
       if (response.statusCode == 200) {
@@ -127,9 +124,9 @@ class ProofUploadService {
   }
 
   Stream<bool> onlineStream() {
-    return Connectivity()
-        .onConnectivityChanged
-        .map((r) => !r.contains(ConnectivityResult.none));
+    return Connectivity().onConnectivityChanged.map(
+      (r) => !r.contains(ConnectivityResult.none),
+    );
   }
 
   // ===========================================================================

@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../features/officer/data/proof_upload_service.dart';
+import '../../../shared_domain_data/auth/providers/auth_providers.dart';
 import '../../../shared_domain_data/reports/domain/entities/report_entity.dart';
+import '../widgets/self_request_button.dart';
 
 /// Halaman detail satu tugas yang ditugaskan ke Petugas Lapangan.
 ///
@@ -114,8 +116,7 @@ class _OfficerTaskDetailScreenState
               child: const Text('Batal'),
             ),
             FilledButton(
-              onPressed: () =>
-                  Navigator.pop(ctx, controller.text.trim()),
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
               child: const Text('Tolak'),
             ),
           ],
@@ -184,9 +185,9 @@ class _OfficerTaskDetailScreenState
         position: null,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tugas ditandai selesai.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Tugas ditandai selesai.')));
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
@@ -211,21 +212,20 @@ class _OfficerTaskDetailScreenState
     final title = (data['title'] as String?) ?? 'Tanpa Judul';
     final description =
         (data['description'] as String?) ?? 'Tidak ada deskripsi.';
-    final heroImage = (data['imageUrl'] as String?) ??
-        (data['imageUrls'] is List &&
-                (data['imageUrls'] as List).isNotEmpty
+    final heroImage =
+        (data['imageUrl'] as String?) ??
+        (data['imageUrls'] is List && (data['imageUrls'] as List).isNotEmpty
             ? (data['imageUrls'] as List).first as String
             : null);
-    final location = data['addressDetail'] as String? ??
+    final location =
+        data['addressDetail'] as String? ??
         (data['location'] is Map
             ? _formatLatLng(
                 (data['location'] as Map)['latitude'],
                 (data['location'] as Map)['longitude'],
               )
             : 'Lokasi tidak diketahui');
-    final urgency = ReportUrgency.fromString(
-      data['urgencyLevel'] as String?,
-    );
+    final urgency = ReportUrgency.fromString(data['urgencyLevel'] as String?);
     final dispatchedAt = (data['dispatchedAt'] != null)
         ? _formatDate(data['dispatchedAt'])
         : null;
@@ -277,10 +277,7 @@ class _OfficerTaskDetailScreenState
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _MetaRow(
-                    icon: Icons.place_outlined,
-                    text: location,
-                  ),
+                  _MetaRow(icon: Icons.place_outlined, text: location),
                   if (dispatchedAt != null) ...[
                     const SizedBox(height: 6),
                     _MetaRow(
@@ -329,6 +326,14 @@ class _OfficerTaskDetailScreenState
                   ),
                   const SizedBox(height: 12),
                   _StatusTimeline(current: _status),
+
+                  const SizedBox(height: 24),
+
+                  // Self-request CTA — hanya untuk laporan yang BELUM
+                  // di-assign ke officer ini dan statusnya masih
+                  // `pending` atau `in_review`.
+                  if (_shouldShowSelfRequest(data))
+                    _SelfRequestCard(reportId: widget.taskId),
 
                   const SizedBox(height: 24),
 
@@ -436,15 +441,15 @@ class _OfficerTaskDetailScreenState
   }
 
   Widget _placeholderHero() => Container(
-        color: AppColors.border,
-        child: const Center(
-          child: Icon(
-            Icons.image_not_supported_outlined,
-            size: 48,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      );
+    color: AppColors.border,
+    child: const Center(
+      child: Icon(
+        Icons.image_not_supported_outlined,
+        size: 48,
+        color: AppColors.textSecondary,
+      ),
+    ),
+  );
 
   Color _urgencyColor(ReportUrgency urgency) {
     switch (urgency) {
@@ -462,6 +467,22 @@ class _OfficerTaskDetailScreenState
   String _formatLatLng(dynamic lat, dynamic lng) {
     if (lat == null || lng == null) return 'Lokasi tidak diketahui';
     return 'Lat ${(lat as num).toStringAsFixed(4)}, Lng ${(lng as num).toStringAsFixed(4)}';
+  }
+
+  /// Self-request CTA ditampilkan untuk laporan yang:
+  /// - status `pending` atau `in_review` (belum ada officer yang ditugaskan)
+  /// - belum di-assign ke officer yang sedang login
+  /// - tidak dalam mode read-only (Riwayat)
+  bool _shouldShowSelfRequest(Map<String, dynamic> data) {
+    if (widget.readOnly) return false;
+    if (_status != ReportStatus.pending && _status != ReportStatus.inReview) {
+      return false;
+    }
+    final assigned = (data['assignedOfficerId'] as String?)?.trim();
+    if (assigned == null || assigned.isEmpty) return true;
+    final user = ref.read(currentUserProvider).valueOrNull;
+    if (user == null) return false;
+    return assigned != user.uid;
   }
 
   String _formatDate(dynamic ts) {
@@ -572,15 +593,27 @@ class _StatusTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final steps = <_TimelineStep>[
-      _TimelineStep('Laporan Terkirim', 'Laporan diterima sistem',
-          ReportStatus.pending),
+      _TimelineStep(
+        'Laporan Terkirim',
+        'Laporan diterima sistem',
+        ReportStatus.pending,
+      ),
       _TimelineStep('Verifikasi', 'Sedang berlangsung', ReportStatus.inReview),
       _TimelineStep(
-          'Penugasan', 'Laporan ditugaskan ke petugas', ReportStatus.dispatched),
-      _TimelineStep('Pengerjaan', 'Petugas memperbaiki kerusakan',
-          ReportStatus.inProgress),
-      _TimelineStep('Selesai', 'Perbaikan selesai & divalidasi',
-          ReportStatus.resolved),
+        'Penugasan',
+        'Laporan ditugaskan ke petugas',
+        ReportStatus.dispatched,
+      ),
+      _TimelineStep(
+        'Pengerjaan',
+        'Petugas memperbaiki kerusakan',
+        ReportStatus.inProgress,
+      ),
+      _TimelineStep(
+        'Selesai',
+        'Perbaikan selesai & divalidasi',
+        ReportStatus.resolved,
+      ),
     ];
 
     final order = [
@@ -652,10 +685,7 @@ class _TimelineRow extends StatelessWidget {
                       ? const Icon(Icons.circle, size: 8, color: Colors.white)
                       : null,
                 ),
-                if (!isLast)
-                  Expanded(
-                    child: Container(width: 2, color: color),
-                  ),
+                if (!isLast) Expanded(child: Container(width: 2, color: color)),
               ],
             ),
           ),
@@ -695,6 +725,54 @@ class _TimelineRow extends StatelessWidget {
   }
 }
 
+/// Card berisi CTA "Saya Ingin Menangani" untuk laporan yang BELUM
+/// di-assign ke officer yang sedang login. Ditampilkan hanya saat
+/// status `pending` atau `in_review`.
+class _SelfRequestCard extends StatelessWidget {
+  const _SelfRequestCard({required this.reportId});
+
+  final String reportId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.front_hand, size: 18, color: AppColors.primary),
+              const SizedBox(width: 6),
+              const Text(
+                'Tangani Laporan Ini',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Laporan ini belum ditugaskan. Ajukan diri Anda untuk menangani; '
+            'admin akan meninjaunya.',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          SelfRequestButton(reportId: reportId),
+        ],
+      ),
+    );
+  }
+}
+
 class _ProofSummaryCard extends StatelessWidget {
   const _ProofSummaryCard({
     required this.proofUrl,
@@ -714,7 +792,8 @@ class _ProofSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasProof = (proofUrl != null && proofUrl!.isNotEmpty) ||
+    final hasProof =
+        (proofUrl != null && proofUrl!.isNotEmpty) ||
         (photoBeforeUrl != null && photoBeforeUrl!.isNotEmpty) ||
         (photoAfterUrl != null && photoAfterUrl!.isNotEmpty);
 
@@ -730,8 +809,11 @@ class _ProofSummaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.photo_camera_outlined,
-                  size: 18, color: AppColors.primary),
+              const Icon(
+                Icons.photo_camera_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: 6),
               const Text(
                 'Bukti Penyelesaian',
@@ -745,7 +827,9 @@ class _ProofSummaryCard extends StatelessWidget {
               if (hasProof)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 2),
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.success.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
@@ -775,7 +859,9 @@ class _ProofSummaryCard extends StatelessWidget {
               Text(
                 proofDescription!,
                 style: const TextStyle(
-                    fontSize: 12, color: AppColors.textPrimary),
+                  fontSize: 12,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ],
           ],
@@ -817,8 +903,11 @@ class _ProofSummaryCard extends StatelessWidget {
                 width: 56,
                 height: 56,
                 color: AppColors.border,
-                child: const Icon(Icons.broken_image,
-                    size: 20, color: AppColors.textSecondary),
+                child: const Icon(
+                  Icons.broken_image,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
           ),

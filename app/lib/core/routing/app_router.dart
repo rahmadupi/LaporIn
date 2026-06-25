@@ -120,8 +120,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) {
               final taskId = state.pathParameters['taskId'] ?? '';
               final extra = state.extra;
-              final taskData =
-                  extra is Map<String, dynamic> ? extra : const <String, dynamic>{};
+              final taskData = extra is Map<String, dynamic>
+                  ? extra
+                  : const <String, dynamic>{};
               return OfficerProofScreen(taskId: taskId, taskData: taskData);
             },
           ),

@@ -76,26 +76,31 @@ class _OfficerHomeScreenState extends ConsumerState<OfficerHomeScreen> {
                     ),
                   );
                 },
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.error_outline,
-                            color: AppColors.error, size: 40),
+                        const Icon(
+                          Icons.error_outline,
+                          color: AppColors.error,
+                          size: 40,
+                        ),
                         const SizedBox(height: 8),
-                        Text('Gagal memuat tugas: $e',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary)),
+                        Text(
+                          'Gagal memuat tugas: $e',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         OutlinedButton(
-                          onPressed: () => ref
-                              .invalidate(myAssignedTasksProvider(user.uid)),
+                          onPressed: () =>
+                              ref.invalidate(myAssignedTasksProvider(user.uid)),
                           child: const Text('Coba lagi'),
                         ),
                       ],
@@ -132,9 +137,11 @@ class _OfficerHomeScreenState extends ConsumerState<OfficerHomeScreen> {
         return tasks.where((t) => t.status == ReportStatus.inProgress).toList();
       case _Filter.mendesak:
         return tasks
-            .where((t) =>
-                t.urgencyLevel == ReportUrgency.high ||
-                t.urgencyLevel == ReportUrgency.critical)
+            .where(
+              (t) =>
+                  t.urgencyLevel == ReportUrgency.high ||
+                  t.urgencyLevel == ReportUrgency.critical,
+            )
             .toList();
     }
   }
@@ -145,7 +152,9 @@ class _OfficerHomeScreenState extends ConsumerState<OfficerHomeScreen> {
     final data = <String, dynamic>{
       'title': task.title,
       'description': task.description,
-      'imageUrl': task.imageUrl ?? (task.imageUrls.isNotEmpty ? task.imageUrls.first : null),
+      'imageUrl':
+          task.imageUrl ??
+          (task.imageUrls.isNotEmpty ? task.imageUrls.first : null),
       'imageUrls': task.imageUrls,
       'addressDetail': task.addressDetail,
       'urgencyLevel': task.urgencyLevel.value,
@@ -182,8 +191,11 @@ class _OfficerHomeScreenState extends ConsumerState<OfficerHomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.inbox_outlined,
-                size: 64, color: AppColors.textSecondary),
+            const Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(height: 12),
             Text(
               msg,
