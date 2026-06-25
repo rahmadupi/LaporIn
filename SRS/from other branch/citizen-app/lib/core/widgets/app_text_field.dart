@@ -3,10 +3,6 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
 /// Text field reusable dengan label di atas + ikon prefix.
-///
-/// Dibuat sebagai satu widget agar Login & Register tidak menduplikasi
-/// styling input yang sama (DRY). Menerima [controller] & [validator]
-/// supaya validasi tetap dikelola oleh Form di masing-masing screen.
 class AppTextField extends StatelessWidget {
   const AppTextField({
     super.key,
@@ -19,6 +15,7 @@ class AppTextField extends StatelessWidget {
     this.suffixIcon,
     this.validator,
     this.textInputAction,
+    this.enabled = true,
   });
 
   final String label;
@@ -30,19 +27,19 @@ class AppTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
   final TextInputAction? textInputAction;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label ditempatkan di atas field, mengikuti desain mockup Login.
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
+            color: enabled ? AppColors.textPrimary : AppColors.textSecondary,
           ),
         ),
         const SizedBox(height: 8),
@@ -52,10 +49,10 @@ class AppTextField extends StatelessWidget {
           obscureText: obscureText,
           textInputAction: textInputAction,
           validator: validator,
+          enabled: enabled,
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon:
-                prefixIcon != null ? Icon(prefixIcon, size: 20) : null,
+            prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20) : null,
             suffixIcon: suffixIcon,
           ),
         ),

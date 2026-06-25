@@ -1,7 +1,4 @@
 /// Daftar konstanta nama route.
-///
-/// Memakai named routes (bukan string literal tersebar) agar typo terdeteksi
-/// lebih awal dan navigasi konsisten di seluruh fitur.
 class AppRoutes {
   AppRoutes._();
 
@@ -10,19 +7,23 @@ class AppRoutes {
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
 
-  // Home per-role. Untuk branch auth-setup, fokus utama adalah citizenHome.
-  static const String citizenHome = '/citizen/home';
-  static const String officerHome = '/officer/home';
-  static const String adminHome = '/admin/home';
+  // Home per-role.
+  static const String citizenHome = '/citizen';
+  static const String officerHome = '/officer';
+  static const String adminHome = '/admin';
 
-  // Alur multi-step "Buat Laporan" (Citizen), dipicu dari FAB/hero card.
-  static const String createReport = '/citizen/report/create';
-
-  // Riwayat Laporan (C7). Detail (C8) dibuka via MaterialPageRoute karena
-  // memerlukan argumen reportId.
-  static const String citizenReports = '/citizen/reports';
-
-  // Notification Center (Citizen), diakses dari ikon lonceng Beranda.
+  // Halaman notifikasi per-role (diakses via bell icon di AppBar).
   static const String citizenNotifications = '/citizen/notifications';
-}
+  static const String officerNotifications = '/officer/notifications';
+  static const String adminNotifications = '/admin/notifications';
 
+  // Officer sub-routes (M2/M3: detail tugas + unggah bukti).
+  static const String officerTaskDetail = '/officer/task';
+  static String officerTaskDetailFor(String taskId) => '/officer/task/$taskId';
+  static const String officerProof = '/officer/proof';
+  static String officerProofFor(String taskId) => '/officer/proof/$taskId';
+
+  // Admin sub-routes.
+  static const String adminPetugas = '/admin/petugas';
+  static String adminPetugasDetail(String uid) => '/admin/petugas/$uid';
+}
